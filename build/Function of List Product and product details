@@ -143,14 +143,14 @@ def add_inventory():
         return
 
     try:
-        if not ((date.get(), PRODUCT_ID.get(), PRODUCT_NAME.get(), STOCKS.get(), PURCHASE_PRICE.get(),
+        if not ((date.get_date(), PRODUCT_ID.get(), PRODUCT_NAME.get(), STOCKS.get(), PURCHASE_PRICE.get(),
                  CATEGORY.get(), QUANTITY.get(), SELLING_PRICE.get())):
             mb.showerror('Fields empty!', "Please fill all the missing fields before pressing the add button!")
             return
         else:
             connector.execute('INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, QUANTITY, '
                               'PURCHASE_PRICE, SELLING_PRICE) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                              (date.get(), PRODUCT_NAME.get(), PRODUCT_ID.get(), STOCKS.get(), CATEGORY.get(),
+                              (date.get_date(), PRODUCT_NAME.get(), PRODUCT_ID.get(), STOCKS.get(), CATEGORY.get(),
                                QUANTITY.get(), PURCHASE_PRICE.get(), SELLING_PRICE.get()))
             connector.commit()
             clear_fields()
@@ -170,7 +170,7 @@ def edit_inventory():
         contents = current_selected_inventory['values']
 
         connector.execute(
-            'UPDATE Inventory SET Date=?, PRODUCT_NAME=?, STOCK=?, CATEGORY=?, QUANTITY=?, PURCHASE_PRICE=?, '
+            'UPDATE Inventory SET Date=?, PRODUCT_NAME=?, STOCKS=?, CATEGORY=?, QUANTITY=?, PURCHASE_PRICE=?, '
             'SELLING_PRICE=? WHERE PRODUCT_ID=?',
             (date.get_date(), PRODUCT_NAME.get(), STOCKS.get(), CATEGORY.get(), QUANTITY.get(), PURCHASE_PRICE.get(),
              SELLING_PRICE.get(), contents[1]))
@@ -189,15 +189,14 @@ def edit_inventory():
 
     view_inventory_details()
 
-    edit_btn = Button(data_entry_frame, text='Edit inventory', font=button_font, width=30,
-                      bg=button_frame_bg, command=edit_existing_inventory)
-    edit_btn.place(x=10, y=395)
-
+    edit_btn = Button(button_frame, text='Save Edit', command=edit_existing_inventory, font=button_font, width=20,
+           bg=button_frame_bg, ).place(
+        x=30, y=595)
 
 def add_another_inventory():
-    global date, PRODUCT_NAME, STOCK, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE, connector
+    global date, PRODUCT_NAME, STOCKS, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE, connector
 
-    if (not date.get() or not PRODUCT_NAME.get() or not STOCK.get() or not PURCHASE_PRICE.get() or not CATEGORY.get()
+    if (not date.get_date() or not PRODUCT_NAME.get() or not STOCKS.get() or not PURCHASE_PRICE.get() or not CATEGORY.get()
             or not QUANTITY.get() or not SELLING_PRICE.get()):
         mb.showerror('Fields empty!', "Please fill all the missing fields before pressing the add button!")
         return
@@ -206,7 +205,7 @@ def add_another_inventory():
             'INSERT INTO Inventory (date, PRODUCT_NAME, STOCK, QUANTITY, PURCHASE_PRICE, SELLING_PRICE) VALUES (?, ?, '
             '?, ?, ?, ?)',
             (
-                date.get_date(), PRODUCT_NAME.get(), STOCK.get(), QUANTITY.get(), PURCHASE_PRICE.get(),
+                date.get_date(), PRODUCT_NAME.get(), STOCKS.get(), QUANTITY.get(), PURCHASE_PRICE.get(),
                 SELLING_PRICE.get())
         )
         connector.commit()
@@ -242,7 +241,7 @@ Entry(data_entry_frame, font=data_entry_font, width=20, textvariable=PRODUCT_NAM
 Label(data_entry_frame, text='PRODUCT ID\t:', font=data_entry_font, bg=data_entry_frame_bg).place(x=130, y=130)
 Entry(data_entry_frame, font=data_entry_frame_bg, width=20, textvariable=PRODUCT_ID).place(x=300, y=130)
 # ADD STOCK
-Label(data_entry_frame, text='STOCK\t:', font=data_entry_font, bg=data_entry_frame_bg).place(x=130, y=170)
+Label(data_entry_frame, text='STOCKS\t:', font=data_entry_font, bg=data_entry_frame_bg).place(x=130, y=170)
 Entry(data_entry_frame, font=data_entry_frame_bg, width=14, textvariable=STOCKS).place(x=300, y=170)
 
 # RIGHT Data Entry Frame
