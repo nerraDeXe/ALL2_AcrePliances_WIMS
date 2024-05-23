@@ -1,0 +1,135 @@
+def list_all_inventory():
+    global connector, table
+
+    table.delete(*table.get_children())
+
+    all_data = connector.execute('SELECT * FROM Inventory')
+    data = all_data.fetchall()
+
+    for values in data:
+        table.insert('', END, values=values)
+
+
+def view_inventory_details():
+    global table, date, PRODUCT_ID, PRODUCT_NAME, STOCK, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE
+
+    if not table.selection():
+        mb.showerror('No data selected', 'Please select an data from the table to view its details')
+        return
+
+    current_selected_inventory = table.item(table.focus())
+    values = current_selected_inventory['values']
+
+    date.set_date(values[0])
+    PRODUCT_ID.set(values[1])
+    PRODUCT_NAME.set(values[2])
+    STOCK.set(values[3])
+    QUANTITY.set(values[4])
+    PURCHASE_PRICE.set(values[5])
+    SELLING_PRICE.set(values[6])
+
+
+def clear_fields():
+    global date, PRODUCT_NAME, STOCK, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE, table
+
+    today_date = datetime.datetime.now().date()
+
+    QUANTITY.set('')
+    PRODUCT_NAME.set('')
+    PURCHASE_PRICE.set(0.0)
+    SELLING_PRICE.set(0.0)
+    CATEGORY.set('Computing')
+    date.set_date(today_date)
+    table.selection_remove(*table.selection())
+
+
+def remove_inventory():
+    if not table.selection():
+        mb.showerror('No record selected!', 'Please select a record to delete!')
+        return
+
+    current_selected_inventory = table.item(table.focus())
+    values_selected = current_selected_inventory['values']
+
+    surety = mb.askyesno('Are you sure?', f'Are you sure that you want to delete the record of {values_selected[2]}')
+
+    if surety:
+        connector.execute('DELETE FROM Inventory WHERE PRODUCT_ID=?', (values_selected[1],))
+        connector.commit()
+
+        list_all_inventory()
+        mb.showinfo('Record deleted successfully!', 'The record you wanted to delete has been deleted successfully')
+
+
+def remove_all_inventory():
+    surety = mb.askyesno('Are you sure?',
+                         'Are you sure that you want to delete all the inventory items from the database?',
+                         icon='warning')
+
+    if surety:
+        table.delete(*table.get_children())
+
+        connector.execute('DELETE FROM Inventory')
+        connector.commit()
+
+        clear_fields()
+        list_all_inventory()
+        mb.showinfo('All Inventory deleted', 'All the inventory were successfully deleted')
+    else:
+        mb.showinfo('Ok then', 'The task was aborted and no inventory was deleted!')
+
+
+def add_another_inventory():
+    global date, PRODUCT_NAME, STOCK, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE, connector
+
+    if (not date.get() or not PRODUCT_NAME.get() or not STOCK.get() or not PURCHASE_PRICE.get() or not CATEGORY.get()
+            or not QUANTITY.get() or not SELLING_PRICE.get()):
+        mb.showerror('Fields empty!', "Please fill all the missing fields before pressing the add button!")
+        return
+    else:
+        connector.execute(
+            'INSERT INTO Inventory (date, PRODUCT_NAME, STOCK, QUANTITY, PURCHASE_PRICE, SELLING_PRICE) VALUES (?, ?, '
+            '?, ?, ?, ?)',
+            (
+                date.get_date(), PRODUCT_NAME.get(), STOCK.get(), QUANTITY.get(), PURCHASE_PRICE.get(),
+                SELLING_PRICE.get())
+        )
+        connector.commit()
+
+        clear_fields()
+        list_all_inventory()
+        mb.showinfo('Data added', 'The inventory whose details you just entered has been added to the database')
+
+
+def edit_inventory():
+    global table
+
+    def edit_existing_inventory():
+        global date, PRODUCT_NAME, STOCK, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE, connector, table
+
+        current_selected_inventory = table.item(table.focus())
+        contents = current_selected_inventory['values']
+
+        connector.execute(
+            'UPDATE Inventory SET Date=?, PRODUCT_NAME=?, STOCK=?, CATEGORY=?, QUANTITY=?, PURCHASE_PRICE=?, '
+            'SELLING_PRICE=? WHERE PRODUCT_ID=?',
+            (date.get_date(), PRODUCT_NAME.get(), STOCK.get(), CATEGORY.get(), QUANTITY.get(), PURCHASE_PRICE.get(),
+             SELLING_PRICE.get(), contents[1]))
+        connector.commit()
+
+        clear_fields()
+        list_all_inventory()
+
+        mb.showinfo('Data edited', 'We have updated the data and stored in the database as you wanted')
+        edit_btn.destroy()
+
+    if not table.selection():
+        mb.showerror('No data selected!',
+                     'You have not selected any data in the table for us to edit; please do that!')
+        return
+
+    view_inventory_details()
+
+    edit_btn = Button(data_entry_frame, text='Edit inventory', font=button_font, width=30,
+                      bg=button_frame_bg, command=edit_existing_inventory)
+    edit_btn.place(x=10, y=395)
