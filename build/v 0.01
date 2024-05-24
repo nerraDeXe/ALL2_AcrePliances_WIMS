@@ -231,7 +231,6 @@ def view_product_details():
     # Add a button to close the detail window
     Button(dashboard_detail_frame, text="Close", command=detail_window.destroy).pack()
 
-
 def edit_product_details():
     if not table.selection():
         mb.showerror('No data selected!', 'You have not selected any data in the table to edit.')
@@ -263,27 +262,20 @@ def edit_product_details():
     date_entry = DateEntry(edit_entry_frame, date=datetime.datetime.now().date(), font=data_entry_font)
     date_entry.place(x=200, y=20)
 
-    Label(edit_entry_frame, text='PRODUCT ID:', font=data_entry_font).place(x=40, y=100)
-    product_id_entry = Entry(edit_entry_frame, font=data_entry_font)
-    product_id_entry.place(x=200, y=100)
-    product_id_entry.insert(0, values[1])
-
-    Label(edit_entry_frame, text='PRODUCT NAME:', font=data_entry_font).place(x=40, y=60)
+    Label(edit_entry_frame, text='PRODUCT NAME:', font=data_entry_font).place(x=40, y=100)
     product_name_entry = Entry(edit_entry_frame, font=data_entry_font)
-    product_name_entry.place(x=200, y=60)
-    product_name_entry.insert(0, values[2])
+    product_name_entry.place(x=200, y=100)
+    product_name_entry.insert(0, values[1])
+
+    Label(edit_entry_frame, text='PRODUCT ID:', font=data_entry_font).place(x=40, y=60)
+    product_id_entry = Entry(edit_entry_frame, font=data_entry_font)
+    product_id_entry.place(x=200, y=60)
+    product_id_entry.insert(0, values[2])
 
     Label(edit_entry_frame, text='STOCKS:', font=data_entry_font).place(x=40, y=140)
     stocks_entry = Entry(edit_entry_frame, font=data_entry_font)
     stocks_entry.place(x=200, y=140)
     stocks_entry.insert(0, values[3])
-
-    Label(edit_entry_frame, text='CATEGORY:', font=data_entry_font).place(x=40, y=180)
-    category_entry = OptionMenu(edit_entry_frame, CATEGORY,
-                                *['Computing', 'Smart Tech & Phone', 'TV & Audio', 'Personal Care', 'Homeware'])
-    category_entry.place(x=200, y=180)
-    category_entry.configure(width=20, font=data_entry_font)
-    category_entry.set(values[4])  # Populate with current category
 
     Label(edit_entry_frame, text='QUANTITY:', font=data_entry_font).place(x=40, y=220)
     quantity_entry = Entry(edit_entry_frame, font=data_entry_font)
@@ -301,10 +293,16 @@ def edit_product_details():
     selling_price_entry.insert(0, values[7])
 
     # Add a button to close the edit window without saving changes
-    Button(dashboard_edit_frame, text='Cancel', command=edit_window.destroy, font=button_font,
-           bg=button_frame_bg).grid(x=0, y=0)
+    Button(edit_entry_frame, text='Cancel', command=edit_window.destroy, font=button_font,
+           bg=button_frame_bg).place(x=200, y=400)
 
-    # Similarly, add other fields for editing like quantity, purchase price, selling price, etc.
+    Label(edit_entry_frame, text='CATEGORY:', font=data_entry_font).place(x=40, y=180)
+    category_var = StringVar(edit_entry_frame)
+    category_var.set(values[4])  # Set the current category value
+    category_entry = OptionMenu(edit_entry_frame, category_var,
+                                'Computing', 'Smart Tech & Phone', 'TV & Audio', 'Personal Care', 'Homeware')
+    category_entry.place(x=200, y=180)
+    category_entry.config(width=20, font=data_entry_font)
 
     # Function to save the changes
     def save_changes():
@@ -313,7 +311,7 @@ def edit_product_details():
             'UPDATE Inventory SET date=?, PRODUCT_NAME=?, PRODUCT_ID=?, STOCKS=?, CATEGORY=?, QUANTITY=?, '
             'PURCHASE_PRICE=?, SELLING_PRICE=? WHERE PRODUCT_ID=?',
             (date_entry.get_date(), product_name_entry.get(), product_id_entry.get(), stocks_entry.get(),
-             category_entry.get(), quantity_entry.get(), purchase_price_entry.get(),
+             category_var.get(), quantity_entry.get(), purchase_price_entry.get(),
              selling_price_entry.get(), product_id_entry.get()))
         connector.commit()
 
@@ -323,9 +321,9 @@ def edit_product_details():
         # Close the edit window
         edit_window.destroy()
 
-        # Button to save the changes
-        Button(edit_entry_frame, text='Save Changes', command=save_changes, font=button_font,
-               bg=button_frame_bg).grid(x=400, y=300)
+    # Button to save the changes
+    Button(edit_entry_frame, text='Save Changes', command=save_changes, font=button_font,
+            bg=button_frame_bg).place(x=300, y=400)
 
 
 ######################################################################################################################
