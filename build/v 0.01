@@ -1,0 +1,437 @@
+import datetime
+import sqlite3
+from tkcalendar import DateEntry
+from tkinter import *
+import tkinter.messagebox as mb
+import tkinter.ttk as ttk
+
+# Connecting to the Database
+connector = sqlite3.connect("Inventory.db")
+cursor = connector.cursor()
+connector.execute(
+    'CREATE TABLE IF NOT EXISTS Inventory (date DATETIME, PRODUCT_NAME TEXT, PRODUCT_ID INTEGER PRIMARY KEY '
+    'AUTOINCREMENT,STOCKS INTEGER, CATEGORY VARCHAR(30), QUANTITY INTEGER, PURCHASE_PRICE FLOAT, '
+    'SELLING_PRICE FLOAT)'
+)
+
+connector.commit()
+
+# Backgrounds and Fonts
+dashboard_frame_bg = 'IndianRed'
+button_frame_bg = 'white'
+table_frame_bg = 'white'
+data_entry_frame_bg = 'grey'
+
+dashboard_font = ('Georgia', 13)
+button_font = 'Times 13 bold'
+data_entry_font = ('Gill Sans MT', 13)
+
+# Initializing the GUI window
+root = Tk()
+root.title('ACREPILLANCE')
+root.geometry('1280x850')
+root.resizable(0, 0)
+
+# StringVar and DoubleVar variables
+PRODUCT_NAME = StringVar()
+PRODUCT_ID = DoubleVar()
+STOCKS = IntVar()
+QUANTITY = IntVar()
+PURCHASE_PRICE = DoubleVar()
+SELLING_PRICE = DoubleVar()
+CATEGORY = StringVar(value='Computing')
+
+
+# Functions
+def list_all_inventory():
+    global connector, table
+
+    table.delete(*table.get_children())
+
+    all_data = connector.execute('SELECT * FROM Inventory')
+    data = all_data.fetchall()
+
+    for values in data:
+        table.insert('', END, values=values)
+
+
+def clear_fields():
+    global date, PRODUCT_NAME, STOCKS, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE
+    global table
+
+    today_date = datetime.datetime.now().date()
+
+    QUANTITY.set(0)
+    PRODUCT_NAME.set('PRODUCT NAME')
+    STOCKS.set(0)
+    PURCHASE_PRICE.set(0.00)
+    SELLING_PRICE.set(0.00)
+    CATEGORY.set('Computing')
+    date.set_date(today_date)
+    table.selection_remove(*table.selection())
+
+
+def remove_inventory():
+    if not table.selection():
+        mb.showerror('No record selected!', 'Please select a record to delete!')
+        return
+
+    current_selected_inventory = table.item(table.focus())
+    values_selected = current_selected_inventory['values']
+
+    surety = mb.askyesno('Are you sure?', f'Are you sure that you want to delete the record of {values_selected[2]}')
+
+    if surety:
+        connector.execute('DELETE FROM Inventory WHERE PRODUCT_ID=?', (values_selected[1],))
+        connector.commit()
+
+        list_all_inventory()
+        mb.showinfo('Record deleted successfully!', 'The record you wanted to delete has been deleted successfully')
+
+
+def remove_all_inventory():
+    surety = mb.askyesno('Are you sure?',
+                         'Are you sure that you want to delete all the inventory items from the database?',
+                         icon='warning')
+
+    if surety:
+        table.delete(*table.get_children())
+
+        connector.execute('DELETE FROM Inventory')
+        connector.commit()
+
+        clear_fields()
+        list_all_inventory()
+        mb.showinfo('All Inventory deleted', 'All the inventory were successfully deleted')
+    else:
+        mb.showinfo('Ok then', 'The task was aborted and no inventory was deleted!')
+
+
+def add_inventory():
+    global date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE
+    global connector
+
+    try:
+        purchase_price = float(PURCHASE_PRICE.get())
+        selling_price = float(SELLING_PRICE.get())
+        if purchase_price <= 0.0 or selling_price <= 0.0:
+            mb.showerror('Inappropriate Value', 'Values 0 or less in Price are not accepted.')
+            return
+    except ValueError:
+        mb.showerror('Inappropriate Value', 'Please enter numbers in the price entry.')
+        return
+
+    try:
+        if not ((date.get_date(), PRODUCT_ID.get(), PRODUCT_NAME.get(), STOCKS.get(), PURCHASE_PRICE.get(),
+                 CATEGORY.get(), QUANTITY.get(), SELLING_PRICE.get())):
+            mb.showerror('Fields empty!', "Please fill all the missing fields before pressing the add button!")
+            return
+        else:
+            connector.execute('INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, QUANTITY, '
+                              'PURCHASE_PRICE, SELLING_PRICE) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                              (date.get_date(), PRODUCT_NAME.get(), PRODUCT_ID.get(), STOCKS.get(), CATEGORY.get(),
+                               QUANTITY.get(), PURCHASE_PRICE.get(), SELLING_PRICE.get()))
+            connector.commit()
+            clear_fields()
+            list_all_inventory()
+            mb.showinfo('Data added', 'The inventory whose details you just entered has been added to the database.')
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+# def edit_inventory():
+#     global table, data_entry_frame
+#
+#     def edit_existing_inventory():
+#         global date, PRODUCT_NAME, STOCKS, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE, connector, table
+#
+#         current_selected_inventory = table.item(table.focus())
+#         contents = current_selected_inventory['values']
+#
+#         connector.execute(
+#             'UPDATE Inventory SET Date=?, PRODUCT_NAME=?, STOCKS=?, CATEGORY=?, QUANTITY=?, PURCHASE_PRICE=?, '
+#             'SELLING_PRICE=? WHERE PRODUCT_ID=?',
+#             (date.get_date(), PRODUCT_NAME.get(), STOCKS.get(), CATEGORY.get(), QUANTITY.get(), PURCHASE_PRICE.get(),
+#              SELLING_PRICE.get(), contents[1]))
+#         connector.commit()
+#
+#         clear_fields()
+#         list_all_inventory()
+#
+#         mb.showinfo('Data edited', 'We have updated the data and stored in the database as you wanted')
+#         edit_btn.destroy()
+#
+#     if not table.selection():
+#         mb.showerror('No data selected!',
+#                      'You have not selected any data in the table for us to edit; please do that!')
+#         return
+#         view_product_details()
+#         edit_btn = Button(button_frame, text='Save Edit', command=edit_existing_inventory, font=button_font, width=20,
+#                           bg=button_frame_bg, ).place(x=30, y=595)
+
+
+def add_another_inventory():
+    global date, PRODUCT_NAME, STOCKS, CATEGORY, QUANTITY, PURCHASE_PRICE, SELLING_PRICE, connector
+
+    if (
+            not date.get_date() or not PRODUCT_NAME.get() or not STOCKS.get() or not PURCHASE_PRICE.get() or not CATEGORY.get()
+            or not QUANTITY.get() or not SELLING_PRICE.get()):
+        mb.showerror('Fields empty!', "Please fill all the missing fields before pressing the add button!")
+        return
+    else:
+        connector.execute(
+            'INSERT INTO Inventory (date, PRODUCT_NAME, STOCK, QUANTITY, PURCHASE_PRICE, SELLING_PRICE) VALUES (?, ?, '
+            '?, ?, ?, ?)',
+            (
+                date.get_date(), PRODUCT_NAME.get(), STOCKS.get(), QUANTITY.get(), PURCHASE_PRICE.get(),
+                SELLING_PRICE.get())
+        )
+        connector.commit()
+
+        clear_fields()
+        list_all_inventory()
+        mb.showinfo('Data added', 'The inventory whose details you just entered has been added to the database')
+
+def view_product_details():
+    if not table.selection():
+        mb.showerror('No data selected', 'Please select an data from the table to view its details')
+        return
+
+    # Retrieve the selected inventory item's details
+    current_selected_product = table.item(table.focus())
+    values = current_selected_product['values']
+
+    # Open a new window for displaying detailed information
+    detail_window = Toplevel(root)
+    detail_window.title('Product\'s Details')
+    detail_window.geometry('720x720')
+
+    # dashboard_frame
+    dashboard_detail_frame = Frame(detail_window, bg=dashboard_frame_bg)
+    dashboard_detail_frame.pack()
+    dashboard_detail_frame.place(relx=0.0, rely=0.0, relwidth=1.00, relheight=0.20)
+    dashboard_detail_frame.pack_forget()
+
+    # Information_frame
+    information_frame = Frame(detail_window, bg=data_entry_frame_bg)
+    information_frame.pack()
+    information_frame.place(relx=0.0, rely=0.2, relwidth=1.00, relheight=0.80)
+    information_frame.pack_forget()
+
+    # Display detailed information in the new window
+    Label(information_frame, text="Date: " + values[0]).pack()
+    Label(information_frame, text="Product Name: " + values[1]).pack()
+    Label(information_frame, text="Product ID: " + str(values[2])).pack()
+    Label(information_frame, text="Stocks: " + str(values[3])).pack()
+    Label(information_frame, text="Category: " + values[4]).pack()
+    Label(information_frame, text="Quantity: " + str(values[5])).pack()
+    Label(information_frame, text="Purchase Price: " + str(values[6])).pack()
+    Label(information_frame, text="Selling Price: " + str(values[7])).pack()
+
+    # Add a button to close the detail window
+    Button(dashboard_detail_frame, text="Close", command=detail_window.destroy).pack()
+
+
+def edit_product_details():
+    if not table.selection():
+        mb.showerror('No data selected!', 'You have not selected any data in the table to edit.')
+        return
+
+    # Retrieve the selected inventory item's details
+    current_selected_product = table.item(table.focus())
+    values = current_selected_product['values']
+
+    # Open a new window for editing the product details
+    edit_window = Toplevel(root)
+    edit_window.title('Edit Product\'s Details')
+    edit_window.geometry('720x720')
+
+    # dashboard_edit_frame
+    dashboard_edit_frame = Frame(edit_window, bg=dashboard_frame_bg)
+    dashboard_edit_frame.pack()
+    dashboard_edit_frame.place(relx=0.0, rely=0.0, relwidth=1.00, relheight=0.20)
+    dashboard_edit_frame.pack_forget()
+
+    # edit_frame
+    edit_entry_frame = Frame(edit_window, bg=data_entry_frame_bg)
+    edit_entry_frame.pack()
+    edit_entry_frame.place(relx=0.0, rely=0.2, relwidth=1.00, relheight=0.80)
+    edit_entry_frame.pack_forget()
+
+    # Data Entry Frame
+    Label(edit_entry_frame, text='Date (M/DD/YY) :', font=data_entry_font).place(x=40, y=20)
+    date_entry = DateEntry(edit_entry_frame, date=datetime.datetime.now().date(), font=data_entry_font)
+    date_entry.place(x=200, y=20)
+
+    Label(edit_entry_frame, text='PRODUCT ID:', font=data_entry_font).place(x=40, y=100)
+    product_id_entry = Entry(edit_entry_frame, font=data_entry_font)
+    product_id_entry.place(x=200, y=100)
+    product_id_entry.insert(0, values[1])
+
+    Label(edit_entry_frame, text='PRODUCT NAME:', font=data_entry_font).place(x=40, y=60)
+    product_name_entry = Entry(edit_entry_frame, font=data_entry_font)
+    product_name_entry.place(x=200, y=60)
+    product_name_entry.insert(0, values[2])
+
+    Label(edit_entry_frame, text='STOCKS:', font=data_entry_font).place(x=40, y=140)
+    stocks_entry = Entry(edit_entry_frame, font=data_entry_font)
+    stocks_entry.place(x=200, y=140)
+    stocks_entry.insert(0, values[3])
+
+    Label(edit_entry_frame, text='CATEGORY:', font=data_entry_font).place(x=40, y=180)
+    category_entry = OptionMenu(edit_entry_frame, CATEGORY,
+                                *['Computing', 'Smart Tech & Phone', 'TV & Audio', 'Personal Care', 'Homeware'])
+    category_entry.place(x=200, y=180)
+    category_entry.configure(width=20, font=data_entry_font)
+    category_entry.set(values[4])  # Populate with current category
+
+    Label(edit_entry_frame, text='QUANTITY:', font=data_entry_font).place(x=40, y=220)
+    quantity_entry = Entry(edit_entry_frame, font=data_entry_font)
+    quantity_entry.place(x=200, y=220)
+    quantity_entry.insert(0, values[5])
+
+    Label(edit_entry_frame, text='PURCHASE PRICE:', font=data_entry_font).place(x=40, y=260)
+    purchase_price_entry = Entry(edit_entry_frame, font=data_entry_font)
+    purchase_price_entry.place(x=200, y=260)
+    purchase_price_entry.insert(0, values[6])
+
+    Label(edit_entry_frame, text='SELLING PRICE:', font=data_entry_font).place(x=40, y=300)
+    selling_price_entry = Entry(edit_entry_frame, font=data_entry_font)
+    selling_price_entry.place(x=200, y=300)
+    selling_price_entry.insert(0, values[7])
+
+    # Add a button to close the edit window without saving changes
+    Button(dashboard_edit_frame, text='Cancel', command=edit_window.destroy, font=button_font,
+           bg=button_frame_bg).grid(x=0, y=0)
+
+    # Similarly, add other fields for editing like quantity, purchase price, selling price, etc.
+
+    # Function to save the changes
+    def save_changes():
+        # Update the product details in the database
+        connector.execute(
+            'UPDATE Inventory SET date=?, PRODUCT_NAME=?, PRODUCT_ID=?, STOCKS=?, CATEGORY=?, QUANTITY=?, '
+            'PURCHASE_PRICE=?, SELLING_PRICE=? WHERE PRODUCT_ID=?',
+            (date_entry.get_date(), product_name_entry.get(), product_id_entry.get(), stocks_entry.get(),
+             category_entry.get(), quantity_entry.get(), purchase_price_entry.get(),
+             selling_price_entry.get(), product_id_entry.get()))
+        connector.commit()
+
+        # Refresh the table to reflect the changes
+        list_all_inventory()
+
+        # Close the edit window
+        edit_window.destroy()
+
+        # Button to save the changes
+        Button(edit_entry_frame, text='Save Changes', command=save_changes, font=button_font,
+               bg=button_frame_bg).grid(x=400, y=300)
+
+
+######################################################################################################################
+
+# Frames
+dashboard_frame = Frame(root, bg=dashboard_frame_bg)
+dashboard_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.20)
+
+button_frame = Frame(root, bg=button_frame_bg)
+button_frame.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
+
+table_frame = Frame(root, bg=table_frame_bg)
+table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
+
+data_entry_frame = Frame(root, bg=data_entry_frame_bg)
+data_entry_frame.pack()
+data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.55)
+data_entry_frame.pack_forget()
+
+# LEFT Data Entry Frame
+Label(data_entry_frame, text='Date (M/DD/YY) :', font=data_entry_font, bg=data_entry_frame_bg).place(x=130, y=50)
+date = DateEntry(data_entry_frame, date=datetime.datetime.now().date(), font=data_entry_font)
+date.place(x=300, y=50)
+# Add Product Name
+Label(data_entry_frame, text='PRODUCT NAME\t:', font=data_entry_font,
+      bg=data_entry_frame_bg).place(x=130, y=90)
+Entry(data_entry_frame, font=data_entry_font, width=20, textvariable=PRODUCT_NAME).place(x=300, y=90)
+
+# Add Product ID
+Label(data_entry_frame, text='PRODUCT ID\t:', font=data_entry_font, bg=data_entry_frame_bg).place(x=130, y=130)
+Entry(data_entry_frame, font=data_entry_frame_bg, width=20, textvariable=PRODUCT_ID).place(x=300, y=130)
+# ADD STOCK
+Label(data_entry_frame, text='STOCKS\t:', font=data_entry_font, bg=data_entry_frame_bg).place(x=130, y=170)
+Entry(data_entry_frame, font=data_entry_frame_bg, width=14, textvariable=STOCKS).place(x=300, y=170)
+
+# RIGHT Data Entry Frame
+Label(data_entry_frame, text='CATEGORY:',
+      font=data_entry_font, bg=data_entry_frame_bg).place(x=580, y=50)
+dd1 = OptionMenu(data_entry_frame, CATEGORY,
+                 *['Computing', 'Smart Tech & Phone', 'TV & Audio', 'Personal Care', 'Homeware'])
+dd1.place(x=750, y=45)
+dd1.configure(width=20, font=data_entry_font)
+
+#
+Label(data_entry_frame, text='QUANTITY\t:', font=data_entry_font, bg=data_entry_frame_bg).place(x=580, y=90)
+Entry(data_entry_frame, font=data_entry_font, width=14, textvariable=QUANTITY).place(x=750, y=90)
+#
+Label(data_entry_frame, text='PURCHASE PRICE\t:', font=data_entry_font, bg=data_entry_frame_bg).place(x=580, y=130)
+Entry(data_entry_frame, font=data_entry_font, width=14, textvariable=PURCHASE_PRICE).place(x=750, y=130)
+Label(data_entry_frame, text='SELLING PRICE\t:', font=data_entry_font, bg=data_entry_frame_bg).place(x=580, y=170)
+Entry(data_entry_frame, font=data_entry_font, width=14, textvariable=SELLING_PRICE).place(x=750, y=170)
+
+# button_frame
+Button(button_frame, text='Add Inventory', command=add_inventory, font=button_font, width=20,
+       bg=button_frame_bg).place(x=30, y=35)
+
+Button(button_frame, text='Delete Inventory', font=button_font, width=20, bg=button_frame_bg,
+       command=remove_inventory).place(x=30, y=135)
+
+Button(button_frame, text='Clear Fields', font=button_font, width=20, bg=button_frame_bg,
+       command=clear_fields).place(x=30, y=235)
+
+Button(button_frame, text='Delete All Inventory', font=button_font, width=20, bg=button_frame_bg,
+       command=remove_all_inventory).place(x=30, y=335)
+
+Button(button_frame, text='View Product\'s Details', font=button_font, width=20, bg=button_frame_bg,
+       command=view_product_details).place(x=30, y=435)
+
+Button(button_frame, text='Edit Selected Product', command=edit_product_details, font=button_font, width=20,
+       bg=button_frame_bg).place(x=30, y=535)
+
+# Treeview Frame
+table = ttk.Treeview(table_frame, selectmode=BROWSE,
+                     columns=('DATE', 'PRODUCT_NAME', 'PRODUCT_ID', 'STOCKS', 'CATEGORY', 'QUANTITY',
+                              'PURCHASE_PRICE', 'SELLING_PRICE'))
+
+X_Scroller = Scrollbar(table, orient=HORIZONTAL, command=table.xview)
+Y_Scroller = Scrollbar(table, orient=VERTICAL, command=table.yview)
+X_Scroller.pack(side=BOTTOM, fill=X)
+Y_Scroller.pack(side=RIGHT, fill=Y)
+
+table.config(yscrollcommand=Y_Scroller.set, xscrollcommand=X_Scroller.set)
+
+table.heading('DATE', text='Date.', anchor=CENTER)
+table.heading('PRODUCT_NAME', text='Product Name', anchor=CENTER)
+table.heading('PRODUCT_ID', text='Product ID', anchor=CENTER)
+table.heading('STOCKS', text='Stocks', anchor=CENTER)
+table.heading('CATEGORY', text='Category', anchor=CENTER)
+table.heading('QUANTITY', text='Quantity', anchor=CENTER)
+table.heading('PURCHASE_PRICE', text='Purchase Price', anchor=CENTER)
+table.heading('SELLING_PRICE', text='Selling Price', anchor=CENTER)
+
+table.column('#0', width=0, stretch=NO)
+table.column('#1', width=135, stretch=NO)
+table.column('#2', width=135, stretch=NO)
+table.column('#3', width=135, stretch=NO)
+table.column('#4', width=135, stretch=NO)
+table.column('#5', width=135, stretch=NO)
+table.column('#6', width=125, stretch=NO)
+table.column('#7', width=125, stretch=NO)
+table.column('#8', width=125, stretch=NO)
+
+table.place(relx=0, y=0, relheight=1, relwidth=1)
+
+list_all_inventory()
+
+# Finalizing the GUI window
+root.update()
+root.mainloop()
