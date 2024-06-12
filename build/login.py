@@ -22,6 +22,15 @@ class Database:
             role TEXT NOT NULL CHECK(role IN ('Administrator', 'Supervisor', 'Worker'))
         )
         ''')
+
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY,
+            task TEXT NOT NULL,
+            assigned_to TEXT NOT NULL,
+            status TEXT NOT NULL
+    )
+    ''')
         self.conn.commit()
 
     def fetch_user_role(self, username, hashed_password):
@@ -126,8 +135,16 @@ class LoginApp:
                 self.root.quit()
                 self.root.destroy()
                 subprocess.run(["python", "admin_panel.py", username])
-            else:
+            elif role == 'Supervisor':
                 messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
+                self.root.quit()
+                self.root.destroy()
+                subprocess.run(["python", "supervisor_panel.py", username])
+            elif role == 'Worker':
+                messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
+                self.root.quit()
+                self.root.destroy()
+                subprocess.run(["python", "worker_panel.py", username])
         else:
             messagebox.showerror("Login Failed", "Invalid username or password.")
 
