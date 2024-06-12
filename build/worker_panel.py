@@ -14,7 +14,7 @@ import hashlib
 from PIL import Image, ImageTk
 import sys
 
-class AdminApp:
+class WorkerApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect("AcrePliances.db")
         self.cursor = self.connector.cursor()
@@ -125,9 +125,9 @@ class AdminApp:
         self.setup_table()
         self.setup_user_management_widgets()
         self.setup_user_table()
-        self.setup_tasks_button_widgets()
+        # self.setup_tasks_button_widgets()
         self.setup_tasks_entry_widgets()
-        self.setup_tasks_table()
+        # self.setup_tasks_table()
         self.setup_tasks2_button_widgets()
         self.setup_tasks2_entry_widgets()
         self.setup_tasks2_table()
@@ -243,17 +243,17 @@ class AdminApp:
         self.hide_move_product_widgets = hide
 
     def setup_button_widgets(self):
-        ttk.Button(self.button_frame, text='User Management', command=self.open_user_management_panel, style='Bold.TButton'
-                    ).place(x=40, y=35, width=200, height=50)
+        # ttk.Button(self.button_frame, text='User Management', command=self.open_user_management_panel, style='Bold.TButton'
+        #             ).place(x=40, y=35, width=200, height=50)
 
         ttk.Button(self.button_frame, text='Inventory Management', width=20, style='Bold.TButton',
                    command=self.open_inventory_panel).place(x=40, y=135, width=200, height=50)
 
         # ttk.Button(self.button_frame, text='Task Assignment', width=20, style='Bold.TButton',
         #            command=self.open_task_panel).place(x=40, y=235, width=200, height=50)
-        #
-        # ttk.Button(self.button_frame, text='Tasks', width=20, style='Bold.TButton',
-        #            command=self.open_task2_panel).place(x=40, y=335, width=200, height=50)
+
+        ttk.Button(self.button_frame, text='Tasks', width=20, style='Bold.TButton',
+                   command=self.open_task2_panel).place(x=40, y=35, width=200, height=50)
 
         ttk.Button(self.button_frame, text='Log out', command=self.restart_login_page, style='Bold.TButton',
                    width=20).place(x=20, y=630, width=100, height=30)
@@ -294,11 +294,11 @@ class AdminApp:
         ttk.Button(self.button_frame_users, text='Back', command=self.close_subpanel, style='Bold.TButton',
                    width=20).place(x=20, y=335, width=60, height=30)
 
-    def setup_tasks_button_widgets(self):
-        ttk.Button(self.button_frame_tasks, text='Assign Task', command=self.assign_task, width=20, style='Bold.TButton',
-                   ).place(x=40, y=35, width=200, height=50)
-        ttk.Button(self.button_frame_tasks, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=630, width=60, height=30)
+    # def setup_tasks_button_widgets(self):
+    #     ttk.Button(self.button_frame_tasks, text='Assign Task', command=self.assign_task, width=20, style='Bold.TButton',
+    #                ).place(x=40, y=35, width=200, height=50)
+    #     ttk.Button(self.button_frame_tasks, text='Back', command=self.close_subpanel, style='Bold.TButton',
+    #                width=20).place(x=20, y=630, width=60, height=30)
 
     def setup_tasks_entry_widgets(self):
 
@@ -312,8 +312,8 @@ class AdminApp:
         self.worker_entry = ttk.Entry(self.task_assignment_frame, font=('Gill Sans MT', 13), width=20)
         self.worker_entry.place(x=300, y=80)
 
-        self.assign_button = ttk.Button(self.task_assignment_frame, text='Assign', command=self.assign_task, style='Bold.TButton',
-                   width=20).place(x=300, y=130, width=160, height=50)
+        # self.assign_button = ttk.Button(self.task_assignment_frame, text='Assign', command=self.assign_task, style='Bold.TButton',
+        #            width=20).place(x=300, y=130, width=160, height=50)
 
     def setup_tasks2_button_widgets(self):
         ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20, style='Bold.TButton',
@@ -386,26 +386,26 @@ class AdminApp:
 
         self.user_table.place(relx=0, rely=0, relheight=1, relwidth=1)
 
-    def setup_tasks_table(self):
-        self.task_table = ttk.Treeview(self.table_frame3, selectmode=BROWSE,
-                                       columns=('ID', 'Task', 'Assigned To', 'Status'))
-
-        Y_Scroller = Scrollbar(self.task_table, orient=VERTICAL, command=self.task_table.yview)
-        Y_Scroller.pack(side=RIGHT, fill=Y)
-
-        self.task_table.config(yscrollcommand=Y_Scroller.set)
-
-        self.task_table.heading('ID', text='ID', anchor=CENTER)
-        self.task_table.heading('Task', text='Task', anchor=CENTER)
-        self.task_table.heading('Assigned To', text='Assigned To', anchor=CENTER)
-        self.task_table.heading('Status', text='Status', anchor=CENTER)
-
-        self.task_table.column('#0', width=0, stretch=NO)
-        self.task_table.column('#1', width=50, stretch=NO)
-        self.task_table.column('#2', width=300, stretch=NO)
-        self.task_table.column('#3', width=50, stretch=NO)
-
-        self.task_table.place(relx=0, rely=0, relheight=1, relwidth=1)
+    # def setup_tasks_table(self):
+    #     self.task_table = ttk.Treeview(self.table_frame3, selectmode=BROWSE,
+    #                                    columns=('ID', 'Task', 'Assigned To', 'Status'))
+    #
+    #     Y_Scroller = Scrollbar(self.task_table, orient=VERTICAL, command=self.task_table.yview)
+    #     Y_Scroller.pack(side=RIGHT, fill=Y)
+    #
+    #     self.task_table.config(yscrollcommand=Y_Scroller.set)
+    #
+    #     self.task_table.heading('ID', text='ID', anchor=CENTER)
+    #     self.task_table.heading('Task', text='Task', anchor=CENTER)
+    #     self.task_table.heading('Assigned To', text='Assigned To', anchor=CENTER)
+    #     self.task_table.heading('Status', text='Status', anchor=CENTER)
+    #
+    #     self.task_table.column('#0', width=0, stretch=NO)
+    #     self.task_table.column('#1', width=50, stretch=NO)
+    #     self.task_table.column('#2', width=300, stretch=NO)
+    #     self.task_table.column('#3', width=50, stretch=NO)
+    #
+    #     self.task_table.place(relx=0, rely=0, relheight=1, relwidth=1)
 
     def setup_tasks2_table(self):
         self.task2_table = ttk.Treeview(self.table_frame4, selectmode=BROWSE,
@@ -421,8 +421,8 @@ class AdminApp:
         self.task2_table.heading('Status', text='Status', anchor=CENTER)
 
         self.task2_table.column('#0', width=0, stretch=NO)
-        self.task2_table.column('#1', width=300, stretch=NO)
-        self.task2_table.column('#2', width=100, stretch=NO)
+        self.task2_table.column('#1', width=20, stretch=NO)
+        self.task2_table.column('#2', width=350, stretch=NO)
 
         self.task2_table.place(relx=0, rely=0, relheight=1, relwidth=1)
 
@@ -529,7 +529,6 @@ class AdminApp:
         else:
             self.table_frame.place_forget()
             self.button_frame_inventory.place_forget()
-            self.data_entry_frame.place_forget()
             self.data_entry_frame.place(relx=0.10, rely=0.20, relwidth=1.0, relheight=0.90)
             self.hide_move_product_widgets()
 
@@ -548,10 +547,10 @@ class AdminApp:
                                   bg='SpringGreen4', command=self.update_record_direct)
             self.add_btn.place(x=270, y=220)
 
-            self.add_btn = Button(self.data_entry_frame, text='Cancel', font='Helvetica 13 bold',
+            self.add_btn2 = Button(self.data_entry_frame, text='Cancel', font='Helvetica 13 bold',
                                   bg='red', command=self.cancel_update)
 
-            self.add_btn.place(x=420, y=220)
+            self.add_btn2.place(x=420, y=220)
 
     def move_product_location(self):
         if not self.table.selection():
@@ -679,7 +678,8 @@ class AdminApp:
                     'INSERT INTO Inventory (date, PRODUCT_NAME, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE, PRODUCT_ID) '
                     'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, ?, ?)', (
                         self.date.get_date(), self.PRODUCT_NAME.get(), amount_to_move, self.CATEGORY.get(),
-                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location, new_internal_reference, self.PRODUCT_ID.get())
+                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location, new_internal_reference,
+                        self.PRODUCT_ID.get())
                 )
 
             self.connector.commit()
@@ -864,13 +864,13 @@ class AdminApp:
                 self.user_table.delete(current_item)
                 mb.showinfo('User deleted', 'The selected user was successfully deleted')
 
-    def open_task_panel(self):
-        self.button_frame.place_forget()
-        self.chart_frame.place_forget()
-        self.table_frame3.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        self.button_frame_tasks.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.task_assignment_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
-        self.load_tasks()
+    # def open_task_panel(self):
+    #     self.button_frame.place_forget()
+    #     self.chart_frame.place_forget()
+    #     self.table_frame3.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
+    #     self.button_frame_tasks.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
+    #     self.task_assignment_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
+    #     self.load_tasks()
 
     def open_task2_panel(self):
         self.button_frame.place_forget()
@@ -880,16 +880,16 @@ class AdminApp:
         self.task_assignment_frame2.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.load_tasks2()
 
-    def load_tasks(self):
-        self.task_table.delete(*self.task_table.get_children())
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT id, task, assigned_to, status FROM tasks')
-        tasks = cursor.fetchall()
-        conn.close()
-
-        for task in tasks:
-            self.task_table.insert("", "end", values=(task[0], task[1], task[2], task[3]), iid=task[0])
+    # def load_tasks(self):
+    #     self.task_table.delete(*self.task_table.get_children())
+    #     conn = sqlite3.connect('users.db')
+    #     cursor = conn.cursor()
+    #     cursor.execute('SELECT id, task, assigned_to, status FROM tasks')
+    #     tasks = cursor.fetchall()
+    #     conn.close()
+    #
+    #     for task in tasks:
+    #         self.task_table.insert("", "end", values=(task[0], task[1], task[2], task[3]), iid=task[0])
 
     def load_tasks2(self):
         for i in self.task2_table.get_children():
@@ -923,19 +923,19 @@ class AdminApp:
         else:
             mb.showwarning("Selection Error", "Please select a task to update.")
 
-    def assign_task(self):
-        task = self.task_entry.get()
-        worker = self.worker_entry.get()
-        if not task or not worker:
-            mb.showerror("Error", "Please fill in all fields")
-            return
-
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO tasks (task, assigned_to, status) VALUES (?, ?, ?)", (task, worker, "Incomplete"))
-        conn.commit()
-        conn.close()
-        self.load_tasks()
+    # def assign_task(self):
+    #     task = self.task_entry.get()
+    #     worker = self.worker_entry.get()
+    #     if not task or not worker:
+    #         mb.showerror("Error", "Please fill in all fields")
+    #         return
+    #
+    #     conn = sqlite3.connect('users.db')
+    #     cursor = conn.cursor()
+    #     cursor.execute("INSERT INTO tasks (task, assigned_to, status) VALUES (?, ?, ?)", (task, worker, "Incomplete"))
+    #     conn.commit()
+    #     conn.close()
+    #     self.load_tasks()
 
     def generate_pdf_report(self, product_name, product_id, stocks, category, purchase_price, selling_price, location, date, action):
         pdf = FPDF()
@@ -1005,5 +1005,5 @@ class AdminApp:
 if __name__ == '__main__':
     username = sys.argv[1] if len(sys.argv) > 1 else "Unknown"
     root = Tk()
-    app = AdminApp(root, username)
+    app = WorkerApp(root, username)
     root.mainloop()

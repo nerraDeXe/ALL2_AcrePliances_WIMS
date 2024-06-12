@@ -14,7 +14,7 @@ import hashlib
 from PIL import Image, ImageTk
 import sys
 
-class AdminApp:
+class SupervisorApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect("AcrePliances.db")
         self.cursor = self.connector.cursor()
@@ -243,15 +243,15 @@ class AdminApp:
         self.hide_move_product_widgets = hide
 
     def setup_button_widgets(self):
-        ttk.Button(self.button_frame, text='User Management', command=self.open_user_management_panel, style='Bold.TButton'
-                    ).place(x=40, y=35, width=200, height=50)
+        # ttk.Button(self.button_frame, text='User Management', command=self.open_user_management_panel, style='Bold.TButton'
+        #             ).place(x=40, y=35, width=200, height=50)
 
         ttk.Button(self.button_frame, text='Inventory Management', width=20, style='Bold.TButton',
-                   command=self.open_inventory_panel).place(x=40, y=135, width=200, height=50)
+                   command=self.open_inventory_panel).place(x=40, y=35, width=200, height=50)
 
-        # ttk.Button(self.button_frame, text='Task Assignment', width=20, style='Bold.TButton',
-        #            command=self.open_task_panel).place(x=40, y=235, width=200, height=50)
-        #
+        ttk.Button(self.button_frame, text='Task Assignment', width=20, style='Bold.TButton',
+                   command=self.open_task_panel).place(x=40, y=135, width=200, height=50)
+
         # ttk.Button(self.button_frame, text='Tasks', width=20, style='Bold.TButton',
         #            command=self.open_task2_panel).place(x=40, y=335, width=200, height=50)
 
@@ -529,7 +529,6 @@ class AdminApp:
         else:
             self.table_frame.place_forget()
             self.button_frame_inventory.place_forget()
-            self.data_entry_frame.place_forget()
             self.data_entry_frame.place(relx=0.10, rely=0.20, relwidth=1.0, relheight=0.90)
             self.hide_move_product_widgets()
 
@@ -679,7 +678,8 @@ class AdminApp:
                     'INSERT INTO Inventory (date, PRODUCT_NAME, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE, PRODUCT_ID) '
                     'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, ?, ?)', (
                         self.date.get_date(), self.PRODUCT_NAME.get(), amount_to_move, self.CATEGORY.get(),
-                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location, new_internal_reference, self.PRODUCT_ID.get())
+                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location, new_internal_reference,
+                        self.PRODUCT_ID.get())
                 )
 
             self.connector.commit()
@@ -1005,5 +1005,5 @@ class AdminApp:
 if __name__ == '__main__':
     username = sys.argv[1] if len(sys.argv) > 1 else "Unknown"
     root = Tk()
-    app = AdminApp(root, username)
+    app = SupervisorApp(root, username)
     root.mainloop()
