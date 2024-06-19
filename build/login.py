@@ -135,21 +135,19 @@ class LoginApp:
             self.root.quit()
             self.root.destroy()
             subprocess.run(["python", "admin_panel.py", username])
-        else:
-            messagebox.showerror("Login Failed", "Invalid username or password.")
-
-        if result:
-            role = result[0]
-            if role == 'Supervisor':
-                messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
-                self.root.quit()
-                self.root.destroy()
-                subprocess.run(["python", "supervisor_panel.py", username])
-            elif role == 'Worker':
-                messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
-                self.root.quit()
-                self.root.destroy()
-                subprocess.run(["python", "worker_panel.py", username])
+        elif result:
+            if result:
+                role = result[0]
+                if role == 'Supervisor':
+                    messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
+                    self.root.quit()
+                    self.root.destroy()
+                    subprocess.run(["python", "supervisor_panel.py", username])
+                elif role == 'Worker':
+                    messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
+                    self.root.quit()
+                    self.root.destroy()
+                    subprocess.run(["python", "worker_panel.py", username])
         else:
             messagebox.showerror("Login Failed", "Invalid username or password.")
 
