@@ -47,6 +47,9 @@ class LoginApp:
         self.db = Database()
         self.setup_ui()
 
+        self.fixed_admin_username = "admin"
+        self.fixed_admin_password = "admin123"
+
     def setup_ui(self):
         self.root.geometry("901x540")
         self.root.configure(bg="#FFFFFF")
@@ -127,15 +130,17 @@ class LoginApp:
 
         result = self.db.fetch_user_role(username, hashed_password)
 
+        if username == self.fixed_admin_username and password == self.fixed_admin_password:
+            messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is Administrator.")
+            self.root.quit()
+            self.root.destroy()
+            subprocess.run(["python", "admin_panel.py", username])
+        else:
+            messagebox.showerror("Login Failed", "Invalid username or password.")
+
         if result:
             role = result[0]
-
-            if role == 'Administrator':
-                messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
-                self.root.quit()
-                self.root.destroy()
-                subprocess.run(["python", "admin_panel.py", username])
-            elif role == 'Supervisor':
+            if role == 'Supervisor':
                 messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
                 self.root.quit()
                 self.root.destroy()
