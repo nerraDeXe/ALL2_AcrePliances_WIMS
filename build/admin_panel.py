@@ -28,6 +28,10 @@ class AdminApp:
         )
         self.connector.commit()
 
+        # self.connector.execute(
+        #     'CREATE TABLE IF NOT EXISTS Order ('
+        # )
+
         self.root = root
         self.username = username
         self.root.title('ACREPILLANCE')
@@ -131,37 +135,37 @@ class AdminApp:
         self.setup_tasks2_button_widgets()
         self.setup_tasks2_entry_widgets()
         self.setup_tasks2_table()
-        self.load_dashboard_image()
+        # self.load_dashboard_image()
 
-    def load_dashboard_image(self):
-        # Load the image
-        image_path = "C:/Users/LIM TZE TA/PycharmProjects/project2/build/assets/frame0/default-monochrome1.png"
-        original_image = Image.open(image_path).convert("RGBA")
-
-        background_color = (194, 26, 47, 255)
-
-        data = original_image.getdata()
-        new_data = []
-        for item in data:
-            # Change all white (also check alpha as white has alpha 255)
-            if item[0] == 255 and item[1] == 255 and item[2] == 255 and item[3] == 255:
-                new_data.append(background_color)
-            else:
-                new_data.append(item)
-
-        original_image.putdata(new_data)
+    # def load_dashboard_image(self):
+    #     # Load the image
+    #     image_path = "C:/Users/LIM TZE TA/PycharmProjects/project2/build/assets/frame0/default-monochrome1.png"
+    #     original_image = Image.open(image_path).convert("RGBA")
+    #
+    #     background_color = (194, 26, 47, 255)
+    #
+    #     data = original_image.getdata()
+    #     new_data = []
+    #     for item in data:
+    #         # Change all white (also check alpha as white has alpha 255)
+    #         if item[0] == 255 and item[1] == 255 and item[2] == 255 and item[3] == 255:
+    #             new_data.append(background_color)
+    #         else:
+    #             new_data.append(item)
+    #
+    #     original_image.putdata(new_data)
 
 
         # Resize image to fit in the dashboard frame
-        resized_image = original_image.resize((285, 45))  # Adjust size as needed
-        self.dashboard_image = ImageTk.PhotoImage(resized_image)
-
-        # Create and place the label
-        self.image_label = Label(self.dashboard_frame, image=self.dashboard_image, bg='#C21A2F')
-        self.image_label.place(relx=0.5, rely=0.5, anchor='center')
-
-        self.username_label = Label(self.root, text=f"Welcome, {self.username}", font=("Microsoft YaHei UI Light", 15), bg="#C21A2F", fg='white')
-        self.username_label.place(x=50, y=50)
+        # resized_image = original_image.resize((285, 45))  # Adjust size as needed
+        # self.dashboard_image = ImageTk.PhotoImage(resized_image)
+        #
+        # # Create and place the label
+        # self.image_label = Label(self.dashboard_frame, image=self.dashboard_image, bg='#C21A2F')
+        # self.image_label.place(relx=0.5, rely=0.5, anchor='center')
+        #
+        # self.username_label = Label(self.root, text=f"Welcome, {self.username}", font=("Microsoft YaHei UI Light", 15), bg="#C21A2F", fg='white')
+        # self.username_label.place(x=50, y=50)
 
     def setup_data_entry_widgets(self):
         # Setup Data Entry Widgets
