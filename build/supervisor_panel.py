@@ -373,17 +373,15 @@ class SupervisorApp:
 
         self.task2_table.place(relx=0, rely=0, relheight=1, relwidth=1)
 
-    # Inventory Management Functions
+# panel's buttons
     def open_inventory_panel(self):
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame.place_forget()
         self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.chart_frame.place_forget()
         self.hide_move_product_widgets()
 
     def close_subpanel(self):
-        self.button_frame_users.place_forget()
         self.button_frame.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame_inventory.place_forget()
         self.button_frame_tasks.place_forget()
@@ -398,6 +396,7 @@ class SupervisorApp:
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
         self.show_bar_chart()
 
+# Inventory Management Functions
     def list_all_inventory(self):
         self.table.delete(*self.table.get_children())
 
