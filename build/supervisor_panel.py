@@ -137,9 +137,9 @@ class SupervisorApp:
     #     # Load the image
     #     image_path = "C:/Users/LIM TZE TA/PycharmProjects/project2/build/assets/frame0/default-monochrome1.png"
     #     original_image = Image.open(image_path).convert("RGBA")
-    # 
+    #
     #     background_color = (194, 26, 47, 255)
-    # 
+    #
     #     data = original_image.getdata()
     #     new_data = []
     #     for item in data:
@@ -148,18 +148,18 @@ class SupervisorApp:
     #             new_data.append(background_color)
     #         else:
     #             new_data.append(item)
-    # 
+    #
     #     original_image.putdata(new_data)
 
 
         # # Resize image to fit in the dashboard frame
         # resized_image = original_image.resize((285, 45))  # Adjust size as needed
         # self.dashboard_image = ImageTk.PhotoImage(resized_image)
-        # 
+        #
         # # Create and place the label
         # self.image_label = Label(self.dashboard_frame, image=self.dashboard_image, bg='#C21A2F')
         # self.image_label.place(relx=0.5, rely=0.5, anchor='center')
-        # 
+        #
         # self.username_label = Label(self.root, text=f"Welcome, {self.username}", font=("Microsoft YaHei UI Light", 15), bg="#C21A2F", fg='white')
         # self.username_label.place(x=50, y=50)
 
@@ -675,7 +675,8 @@ class SupervisorApp:
                 new_internal_reference = f"WH-{location_prefix}-{self.PRODUCT_ID.get()}"
 
                 self.connector.execute(
-                    'INSERT INTO Inventory (date, PRODUCT_NAME, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE, PRODUCT_ID) '
+                    'INSERT INTO Inventory (date, PRODUCT_NAME, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, '
+                    'LOCATION, INTERNAL_REFERENCE, PRODUCT_ID)'
                     'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, ?, ?)', (
                         self.date.get_date(), self.PRODUCT_NAME.get(), amount_to_move, self.CATEGORY.get(),
                         self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location, new_internal_reference,

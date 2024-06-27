@@ -22,11 +22,34 @@ class WorkerApp:
         self.cursor2 = self.connector2.cursor()
 
         self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Inventory (PRODUCT_REAL_ID INTEGER PRIMARY KEY, date DATE, PRODUCT_NAME TEXT, PRODUCT_ID TEXT, '
+            'CREATE TABLE IF NOT EXISTS Inventory (PRODUCT_REAL_ID INTEGER PRIMARY KEY, date DATE, PRODUCT_NAME TEXT, '
+            'PRODUCT_ID TEXT,'
             'STOCKS INTEGER, CATEGORY VARCHAR(30), PURCHASE_PRICE FLOAT, '
             'SELLING_PRICE FLOAT, LOCATION VARCHAR(30), INTERNAL_REFERENCE VARCHAR(30))'
         )
         self.connector.commit()
+
+        # self.connector.execute(
+        #     'CREATE TABLE IF NOT EXISTS Incoming ('
+        #     'INCOMING_ID INTEGER PRIMARY KEY,'
+        #     'PRODUCT_ID TEXT NOT NULL,'
+        #     'STOCKS INTEGER NOT NULL,'
+        #     'CATEGORY VARCHAR(30) NOT NULL,'
+        #     'VENDOR TEXT NOT NULL,'
+        #     'date DATE'
+        # )
+        # self.connector.commit()
+        #
+        # self.connector.execute(
+        #     'CREATE TABLE IF NOT EXISTS Outgoing ('
+        #     'OUTGOING_ID INTEGER PRIMARY KEY,'
+        #     'PRODUCT_ID TEXT NOT NULL,'
+        #     'STOCKS INTEGER NOT NULL,'
+        #     'CATEGORY VARCHAR(30) NOT NULL,'
+        #     'BRANCH TEXT NOT NULL,'
+        #     'date DATE'
+        # )
+        # self.connector.commit()
 
         self.root = root
         self.username = username
@@ -113,6 +136,11 @@ class WorkerApp:
         self.task_assignment_frame2.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.task_assignment_frame2.place_forget()
 
+        self.order_frame = Frame(self.root)
+        self.order_frame.pack()
+        self.order_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
+        self.order_frame.place_forget()
+
         self.chart_frame = Frame(self.root)
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.65)
         self.show_bar_chart()
@@ -123,7 +151,7 @@ class WorkerApp:
         self.setup_button_widgets()
         self.setup_inventory_button_widgets()
         self.setup_table()
-        self.setup_user_management_widgets()
+        self.setup_user_management_button_widgets()
         self.setup_user_table()
         # self.setup_tasks_button_widgets()
         self.setup_tasks_entry_widgets()
@@ -137,9 +165,9 @@ class WorkerApp:
     #     # Load the image
     #     image_path = "C:/Users/LIM TZE TA/PycharmProjects/project2/build/assets/frame0/default-monochrome1.png"
     #     original_image = Image.open(image_path).convert("RGBA")
-    # 
+    #
     #     background_color = (194, 26, 47, 255)
-    # 
+    #
     #     data = original_image.getdata()
     #     new_data = []
     #     for item in data:
@@ -148,18 +176,18 @@ class WorkerApp:
     #             new_data.append(background_color)
     #         else:
     #             new_data.append(item)
-    # 
+    #
     #     original_image.putdata(new_data)
-    # 
-    # 
+    #
+    #
     #     # Resize image to fit in the dashboard frame
     #     resized_image = original_image.resize((285, 45))  # Adjust size as needed
     #     self.dashboard_image = ImageTk.PhotoImage(resized_image)
-    # 
+    #
     #     # Create and place the label
     #     self.image_label = Label(self.dashboard_frame, image=self.dashboard_image, bg='#C21A2F')
     #     self.image_label.place(relx=0.5, rely=0.5, anchor='center')
-    # 
+    #
     #     self.username_label = Label(self.root, text=f"Welcome, {self.username}", font=("Microsoft YaHei UI Light", 15), bg="#C21A2F", fg='white')
     #     self.username_label.place(x=50, y=50)
 
@@ -284,7 +312,7 @@ class WorkerApp:
         ttk.Button(self.button_frame_inventory, text='Back', command=self.close_subpanel, style='Bold.TButton',
                    width=20).place(x=20, y=630, width=60, height=30)
 
-    def setup_user_management_widgets(self):
+    def setup_user_management_button_widgets(self):
         ttk.Button(self.button_frame_users, text='Add User', command=self.add_user, width=20, style='Bold.TButton',
                    ).place(x=40, y=35, width=200, height=50)
 
@@ -328,6 +356,15 @@ class WorkerApp:
                                         values=["Incomplete", "In Progress", "Blocked", "Complete"])
         self.status_menu.place(x=130, y=80)
 
+    def setup_order_button_widgets(self):
+        ttk.Button(self.order_frame, text='Add Order', command=self.add_user, width=20, style='Bold.TButton',
+                   ).place(x=40, y=35, width=200, height=50)
+
+        ttk.Button(self.order_frame, text='Complete Order', width=20, style='Bold.TButton',
+                   command=self.delete_user).place(x=40, y=135, width=200, height=50)
+
+        ttk.Button(self.order_frame, text='Back', command=self.close_subpanel, style='Bold.TButton',
+                   width=20).place(x=20, y=335, width=60, height=30)
 
     def setup_table(self):
         self.table = ttk.Treeview(self.table_frame, selectmode=BROWSE,
@@ -937,6 +974,49 @@ class WorkerApp:
     #     conn.close()
     #     self.load_tasks()
 
+    def add_incoming(self):
+        category_prefix = self.CATEGORY.get()[0].upper()  # Get the first letter of the category
+        count = \
+        self.cursor.execute('SELECT COUNT(*) FROM Inventory WHERE CATEGORY=?', (self.CATEGORY.get(),)).fetchone()[0]
+        product_id = f"{category_prefix}{count + 1:03d}"  # Format product ID with category prefix and padded number
+
+        location_prefix = self.LOCATION.get()[:3].upper()  # Get the first 3 letters of the location
+        product_internal_reference = f"WH-{location_prefix}-{product_id}"
+
+        try:
+            if (
+                    not self.date.get_date() or not self.date.get_date() or not self.STOCKS.get() or not self.CATEGORY.get() or not
+            self.PURCHASE_PRICE.get() or not self.SELLING_PRICE.get() or not self.LOCATION.get()):
+                mb.showerror('Fields empty!',
+                             "Please fill all missing fields before adding.")
+            else:
+                # Insert data into database
+                self.cursor.execute(
+                    'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE) '
+                    'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, LTRIM(RTRIM(?)), ?)',
+                    (
+                        self.date.get_date(), self.PRODUCT_NAME.get(), product_id, self.STOCKS.get(),
+                        self.CATEGORY.get(),
+                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
+                        product_internal_reference
+                    )
+                )
+                self.connector.commit()
+
+                mb.showinfo('Success', 'Inventory added successfully')
+                self.list_all_inventory()
+
+                # Generate PDF report
+                self.generate_pdf_report(
+                    self.PRODUCT_NAME.get(), product_id, self.STOCKS.get(), self.CATEGORY.get(),
+                    self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
+                    self.date.get_date(), 'Add'
+                )
+
+                self.clear_fields()
+        except:
+            mb.showerror("Error", "Inappropriate values.")
+
     def generate_pdf_report(self, product_name, product_id, stocks, category, purchase_price, selling_price, location, date, action):
         pdf = FPDF()
         pdf.add_page()
@@ -965,7 +1045,8 @@ class WorkerApp:
     def show_bar_chart(self):
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
 
-        all_data = self.connector.execute('SELECT PRODUCT_NAME, STOCKS FROM Inventory')
+        # Modify SQL query to group by product name and sum stocks
+        all_data = self.connector.execute('SELECT PRODUCT_NAME, SUM(STOCKS) FROM Inventory GROUP BY PRODUCT_NAME')
         data = all_data.fetchall()
 
         if not data:
@@ -975,11 +1056,10 @@ class WorkerApp:
         product_names = [item[0] for item in data]
         stocks = [item[1] for item in data]
 
-
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.bar(product_names, stocks, color='orange')
         ax.set_xlabel('Product Name', color='black')
-        ax.set_ylabel('Stocks', color='black')
+        ax.set_ylabel('Total Stocks', color='black')
         ax.set_title('Inventory Stocks', color='black')
 
         # Set the tick positions to match the number of products

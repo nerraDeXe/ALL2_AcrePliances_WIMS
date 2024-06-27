@@ -1,6 +1,8 @@
 import datetime
 import sqlite3
 import matplotlib.pyplot as plt
+import customtkinter
+from customtkinter import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 # from matplotlib import style
 from tkcalendar import DateEntry
@@ -14,6 +16,7 @@ import hashlib
 from PIL import Image, ImageTk
 import sys
 
+
 class AdminApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect("AcrePliances.db")
@@ -22,7 +25,8 @@ class AdminApp:
         self.cursor2 = self.connector2.cursor()
 
         self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Inventory (PRODUCT_REAL_ID INTEGER PRIMARY KEY, date DATE, PRODUCT_NAME TEXT, PRODUCT_ID TEXT, '
+            'CREATE TABLE IF NOT EXISTS Inventory (PRODUCT_REAL_ID INTEGER PRIMARY KEY, date DATE, PRODUCT_NAME TEXT, '
+            'PRODUCT_ID TEXT,'
             'STOCKS INTEGER, CATEGORY VARCHAR(30), PURCHASE_PRICE FLOAT, '
             'SELLING_PRICE FLOAT, LOCATION VARCHAR(30), INTERNAL_REFERENCE VARCHAR(30))'
         )
@@ -35,7 +39,7 @@ class AdminApp:
         self.root = root
         self.username = username
         self.root.title('ACREPILLANCE')
-        self.root.geometry('1280x850')
+        self.root.geometry('1920x1000')
         self.root.resizable(0, 0)
 
         self.setup_variables()
@@ -44,11 +48,13 @@ class AdminApp:
         sv_ttk.set_theme("light")
         self.root.tk.call("source", "azure.tcl")
         self.root.tk.call("set_theme", "light")
+        customtkinter.set_appearance_mode("light")
         self.custom_style = ttk.Style()
-        self.custom_style.configure('Bold.TButton', font=('Helvetica', 12, 'bold'))
+        self.custom_style.configure('Bold.TButton', font=('Helvetica', 12, 'bold'), background="black")
 
         self.list_all_inventory()
         self.load_users()
+        self.original_items = {}
 
     def setup_variables(self):
         self.PRODUCT_NAME = StringVar()
@@ -65,20 +71,20 @@ class AdminApp:
 
     def setup_frames(self):
         self.dashboard_frame = Frame(self.root, bg='#C21A2F')
-        self.dashboard_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.15)
+        self.dashboard_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.20)
 
-        self.button_frame = Frame(self.root)
+        self.button_frame = Frame(self.root, bg='#9C0014')
         self.button_frame.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
 
-        self.button_frame_inventory = Frame(self.root)
+        self.button_frame_inventory = Frame(self.root, bg='#9C0014')
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.15, relwidth=0.22)
         self.button_frame_inventory.place_forget()
 
-        self.button_frame_users = Frame(self.root)
+        self.button_frame_users = Frame(self.root, bg='#9C0014')
         self.button_frame_users.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
         self.button_frame_users.place_forget()
 
-        self.button_frame_tasks = Frame(self.root)
+        self.button_frame_tasks = Frame(self.root, bg='#9C0014')
         self.button_frame_tasks.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
         self.button_frame_tasks.place_forget()
 
@@ -137,24 +143,23 @@ class AdminApp:
         self.setup_tasks2_table()
         # self.load_dashboard_image()
 
-    # def load_dashboard_image(self):
-    #     # Load the image
-    #     image_path = "C:/Users/LIM TZE TA/PycharmProjects/project2/build/assets/frame0/default-monochrome1.png"
-    #     original_image = Image.open(image_path).convert("RGBA")
-    #
-    #     background_color = (194, 26, 47, 255)
-    #
-    #     data = original_image.getdata()
-    #     new_data = []
-    #     for item in data:
-    #         # Change all white (also check alpha as white has alpha 255)
-    #         if item[0] == 255 and item[1] == 255 and item[2] == 255 and item[3] == 255:
-    #             new_data.append(background_color)
-    #         else:
-    #             new_data.append(item)
-    #
-    #     original_image.putdata(new_data)
-
+        # def load_dashboard_image(self):
+        #     # Load the image
+        #     image_path = "C:/Users/LIM TZE TA/PycharmProjects/project2/build/assets/frame0/default-monochrome1.png"
+        #     original_image = Image.open(image_path).convert("RGBA")
+        #
+        #     background_color = (194, 26, 47, 255)
+        #
+        #     data = original_image.getdata()
+        #     new_data = []
+        #     for item in data:
+        #         # Change all white (also check alpha as white has alpha 255)
+        #         if item[0] == 255 and item[1] == 255 and item[2] == 255 and item[3] == 255:
+        #             new_data.append(background_color)
+        #         else:
+        #             new_data.append(item)
+        #
+        #     original_image.putdata(new_data)
 
         # Resize image to fit in the dashboard frame
         # resized_image = original_image.resize((285, 45))  # Adjust size as needed
@@ -164,8 +169,9 @@ class AdminApp:
         # self.image_label = Label(self.dashboard_frame, image=self.dashboard_image, bg='#C21A2F')
         # self.image_label.place(relx=0.5, rely=0.5, anchor='center')
         #
-        # self.username_label = Label(self.root, text=f"Welcome, {self.username}", font=("Microsoft YaHei UI Light", 15), bg="#C21A2F", fg='white')
-        # self.username_label.place(x=50, y=50)
+        self.username_label = Label(self.root, text=f"Welcome, {self.username}", font=("Microsoft YaHei UI Light", 15),
+                                    bg="#C21A2F", fg='white')
+        self.username_label.place(x=50, y=50)
 
     def setup_data_entry_widgets(self):
         # Setup Data Entry Widgets
@@ -176,12 +182,14 @@ class AdminApp:
 
         self.product_name_label = ttk.Label(self.data_entry_frame, text='Product Name:', font=('Gill Sans MT', 13))
         self.product_name_label.place(x=130, y=80)
-        self.product_name = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20, textvariable=self.PRODUCT_NAME)
+        self.product_name = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20,
+                                      textvariable=self.PRODUCT_NAME)
         self.product_name.place(x=300, y=80)
 
         self.location_label = ttk.Label(self.data_entry_frame, text='Location:', font=('Gill Sans MT', 13))
         self.location_label.place(x=130, y=120)
-        self.location_menu = ttk.OptionMenu(self.data_entry_frame, self.LOCATION, 'Receiving Area', 'Receiving Area', 'Staging Area', 'Storage Area', 'Shipping Area')
+        self.location_menu = ttk.OptionMenu(self.data_entry_frame, self.LOCATION, 'Receiving Area', 'Receiving Area',
+                                            'Staging Area', 'Storage Area', 'Shipping Area')
         self.location_menu.place(x=300, y=120)
 
         self.stocks_label = ttk.Label(self.data_entry_frame, text='Stocks:', font=('Gill Sans MT', 13))
@@ -191,17 +199,20 @@ class AdminApp:
 
         self.category_label = ttk.Label(self.data_entry_frame, text='Category:', font=('Gill Sans MT', 13))
         self.category_label.place(x=580, y=40)
-        self.dd1 = ttk.OptionMenu(self.data_entry_frame, self.CATEGORY, 'Electronics', 'Electronics', 'Appliances', 'Personal Care', 'Homeware', 'Furniture')
+        self.dd1 = ttk.OptionMenu(self.data_entry_frame, self.CATEGORY, 'Electronics', 'Electronics', 'Appliances',
+                                  'Personal Care', 'Homeware', 'Furniture')
         self.dd1.place(x=750, y=35)
 
         self.purchase_label = ttk.Label(self.data_entry_frame, text='Purchase Price:', font=('Gill Sans MT', 13))
         self.purchase_label.place(x=580, y=120)
-        self.purchase = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20, textvariable=self.PURCHASE_PRICE)
+        self.purchase = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20,
+                                  textvariable=self.PURCHASE_PRICE)
         self.purchase.place(x=750, y=120)
 
         self.selling_label = ttk.Label(self.data_entry_frame, text='Selling Price:', font=('Gill Sans MT', 13))
         self.selling_label.place(x=580, y=160)
-        self.selling = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20, textvariable=self.SELLING_PRICE)
+        self.selling = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20,
+                                 textvariable=self.SELLING_PRICE)
         self.selling.place(x=750, y=160)
 
         # Hide Data Entry Widgets
@@ -228,12 +239,14 @@ class AdminApp:
         # Setup Move Product Widgets
         self.moveamount_label = ttk.Label(self.data_entry_frame, text='Enter Amount to add:', font=('Gill Sans MT', 13))
         self.moveamount_label.place(x=200, y=40)
-        self.moveamount = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=70, textvariable=self.AMOUNT_TO_MOVE)
+        self.moveamount = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=70,
+                                    textvariable=self.AMOUNT_TO_MOVE)
         self.moveamount.place(x=200, y=70)
 
         self.newlocation_label = ttk.Label(self.data_entry_frame, text='New Location:', font=('Gill Sans MT', 13))
         self.newlocation_label.place(x=200, y=110)
-        self.newlocation = ttk.OptionMenu(self.data_entry_frame, self.NEW_LOCATION, 'Receiving Area', 'Receiving Area', 'Staging Area', 'Storage Area', 'Shipping Area')
+        self.newlocation = ttk.OptionMenu(self.data_entry_frame, self.NEW_LOCATION, 'Receiving Area', 'Receiving Area',
+                                          'Staging Area', 'Storage Area', 'Shipping Area')
         self.newlocation.place(x=200, y=140)
 
         # Hide Move Product Widgets
@@ -247,46 +260,45 @@ class AdminApp:
         self.hide_move_product_widgets = hide
 
     def setup_button_widgets(self):
-        ttk.Button(self.button_frame, text='User Management', command=self.open_user_management_panel, style='Bold.TButton'
-                    ).place(x=40, y=35, width=200, height=50)
+        CTkButton(self.button_frame, text='User Management', command=self.open_user_management_panel, width=275,
+                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22),
+                  corner_radius=15, hover_color='orange').place(x=75, y=70, anchor=W)
 
-        ttk.Button(self.button_frame, text='Inventory Management', width=20, style='Bold.TButton',
-                   command=self.open_inventory_panel).place(x=40, y=135, width=200, height=50)
+        CTkButton(self.button_frame, text='Inventory Management', command=self.open_inventory_panel,
+                  width=275, height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22),
+                  corner_radius=15, hover_color='orange').place(x=75, y=180, anchor=W)
 
-        # ttk.Button(self.button_frame, text='Task Assignment', width=20, style='Bold.TButton',
-        #            command=self.open_task_panel).place(x=40, y=235, width=200, height=50)
-        #
-        # ttk.Button(self.button_frame, text='Tasks', width=20, style='Bold.TButton',
-        #            command=self.open_task2_panel).place(x=40, y=335, width=200, height=50)
+        CTkButton(self.button_frame, text='Purchase Order', command=self.open_purchase_order, width=275,
+                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=75, y=290, anchor=W)
 
         ttk.Button(self.button_frame, text='Log out', command=self.restart_login_page, style='Bold.TButton',
                    width=20).place(x=20, y=630, width=100, height=30)
 
     def setup_inventory_button_widgets(self):
-        ttk.Button(self.button_frame_inventory, text='Add Inventory', command=self.add_inventory, width=20, style='Bold.TButton'
-                   ).place(x=40, y=35, width=200, height=40)
 
-        ttk.Button(self.button_frame_inventory, text='Delete Inventory', width=20, style='Bold.TButton',
-                   command=self.remove_inventory).place(x=40, y=115, width=200, height=40)
+        CTkButton(self.button_frame_inventory, text='Delete Inventory', command=self.remove_inventory, width=275,
+                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=75, y=180, anchor=W)
 
-        ttk.Button(self.button_frame_inventory, text='Clear Fields', width=20, style='Bold.TButton',
-                   command=self.clear_fields).place(x=40, y=195, width=200, height=40)
+        CTkButton(self.button_frame_inventory, text='Edit Selected Product', command=self.edit_product_details,
+                  width=275, height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=75, y=290, anchor=W)
 
-        ttk.Button(self.button_frame_inventory, text='Delete All Inventory', width=20, style='Bold.TButton',
-                   command=self.remove_all_inventory).place(x=40, y=275, width=200, height=40)
+        CTkButton(self.button_frame_inventory, text='Move Product Location', command=self.move_product_location,
+                  width=275, height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=75, y=400, anchor=W)
 
-        ttk.Button(self.button_frame_inventory, text='View Product\'s Details', width=20, style='Bold.TButton',
-                   command=self.view_product_details).place(x=40, y=355, width=200, height=40)
-
-        ttk.Button(self.button_frame_inventory, text='Edit Selected Product', command=self.edit_product_details, style='Bold.TButton',
-                   width=20).place(x=40, y=435, width=200, height=40)
-
-        ttk.Button(self.button_frame_inventory, text='Move Product Location', command=self.move_product_location,
-                   style='Bold.TButton',
-                   width=20).place(x=40, y=515, width=200, height=40)
-
-        ttk.Button(self.button_frame_inventory, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=630, width=60, height=30)
+        CTkButton(self.button_frame_inventory, text='Back', command=self.close_subpanel, width=90, height=45,
+                  border_width=0, fg_color='red', border_color='black', text_color='white',
+                  font=('Microsoft YaHei UI Light', 16), corner_radius=15, hover_color='orange'
+                  ).place(x=160, y=500, anchor=W)
 
     def setup_user_management_widgets(self):
         ttk.Button(self.button_frame_users, text='Add User', command=self.add_user, width=20, style='Bold.TButton',
@@ -299,7 +311,8 @@ class AdminApp:
                    width=20).place(x=20, y=335, width=60, height=30)
 
     def setup_tasks_button_widgets(self):
-        ttk.Button(self.button_frame_tasks, text='Assign Task', command=self.assign_task, width=20, style='Bold.TButton',
+        ttk.Button(self.button_frame_tasks, text='Assign Task', command=self.assign_task, width=20,
+                   style='Bold.TButton',
                    ).place(x=40, y=35, width=200, height=50)
         ttk.Button(self.button_frame_tasks, text='Back', command=self.close_subpanel, style='Bold.TButton',
                    width=20).place(x=20, y=630, width=60, height=30)
@@ -316,11 +329,12 @@ class AdminApp:
         self.worker_entry = ttk.Entry(self.task_assignment_frame, font=('Gill Sans MT', 13), width=20)
         self.worker_entry.place(x=300, y=80)
 
-        self.assign_button = ttk.Button(self.task_assignment_frame, text='Assign', command=self.assign_task, style='Bold.TButton',
-                   width=20).place(x=300, y=130, width=160, height=50)
+        self.assign_button = ttk.Button(self.task_assignment_frame, text='Assign', command=self.assign_task,
+                                        style='Bold.TButton', width=20).place(x=300, y=130, width=160, height=50)
 
     def setup_tasks2_button_widgets(self):
-        ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20, style='Bold.TButton',
+        ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20,
+                   style='Bold.TButton',
                    ).place(x=40, y=35, width=200, height=50)
         ttk.Button(self.button_frame_tasks2, text='Back', command=self.close_subpanel, style='Bold.TButton',
                    width=20).place(x=20, y=630, width=60, height=30)
@@ -332,29 +346,39 @@ class AdminApp:
                                         values=["Incomplete", "In Progress", "Blocked", "Complete"])
         self.status_menu.place(x=130, y=80)
 
+    def sort_by_column(self, treeview, col, descending):
+        # Get the current data in the treeview
+        data = [(treeview.set(child, col), child) for child in treeview.get_children("")]
+
+        # Sort data based on the given column
+        data.sort(reverse=descending)
+
+        # Rearrange items in sorted positions
+        for index, (val, child) in enumerate(data):
+            treeview.move(child, "", index)
+
+        # Reverse sort next time
+        treeview.heading(col, command=lambda: self.sort_by_column(treeview, col, not descending))
 
     def setup_table(self):
-        self.table = ttk.Treeview(self.table_frame, selectmode=BROWSE,
-                                  columns=('PRODUCT_REAL_ID','DATE', 'PRODUCT_NAME', 'PRODUCT_ID' , 'STOCKS', 'CATEGORY',
-                                           'PURCHASE_PRICE', 'SELLING_PRICE', 'LOCATION', 'INTERNAL_REFERENCE'))
+        style = ttk.Style()
+        style.configure("Treeview", rowheight=25)  # Increase row height to 25 pixels
 
-        X_Scroller = Scrollbar(self.table, orient=HORIZONTAL, command=self.table.xview)
-        Y_Scroller = Scrollbar(self.table, orient=VERTICAL, command=self.table.yview)
-        X_Scroller.pack(side=BOTTOM, fill=X)
-        Y_Scroller.pack(side=RIGHT, fill=Y)
+        self.table = ttk.Treeview(self.table_frame, style="Treeview", selectmode='browse',
+                                  columns=(
+                                      'PRODUCT_REAL_ID', 'DATE', 'PRODUCT_NAME', 'PRODUCT_ID', 'STOCKS', 'CATEGORY',
+                                      'PURCHASE_PRICE', 'SELLING_PRICE', 'LOCATION', 'INTERNAL_REFERENCE'))
 
-        self.table.config(yscrollcommand=Y_Scroller.set)
+        X_Scroller = ttk.Scrollbar(self.table, orient='horizontal', command=self.table.xview)
+        Y_Scroller = ttk.Scrollbar(self.table, orient='vertical', command=self.table.yview)
+        X_Scroller.pack(side='bottom', fill='x')
+        Y_Scroller.pack(side='right', fill='y')
 
-        self.table.heading('PRODUCT_REAL_ID', text='', anchor=CENTER)
-        self.table.heading('DATE', text='Date', anchor=CENTER)
-        self.table.heading('PRODUCT_NAME', text='Product Name', anchor=CENTER)
-        self.table.heading('PRODUCT_ID', text='Product ID', anchor=CENTER)
-        self.table.heading('STOCKS', text='Stocks', anchor=CENTER)
-        self.table.heading('CATEGORY', text='Category', anchor=CENTER)
-        self.table.heading('PURCHASE_PRICE', text='Purchase Price', anchor=CENTER)
-        self.table.heading('SELLING_PRICE', text='Selling Price', anchor=CENTER)
-        self.table.heading('LOCATION', text='Warehouse Location', anchor=CENTER)
-        self.table.heading('INTERNAL_REFERENCE', text='Product IR', anchor=CENTER)
+        self.table.config(yscrollcommand=Y_Scroller.set, xscrollcommand=X_Scroller.set)
+
+        for col in self.table["columns"]:
+            self.table.heading(col, text=col.replace('_', ' ').title(), anchor='center',
+                               command=lambda _col=col: self.sort_by_column(self.table, _col, False))
 
         self.table.column('#0', width=0, stretch=NO)
         self.table.column('#1', width=0, stretch=NO)
@@ -413,7 +437,7 @@ class AdminApp:
 
     def setup_tasks2_table(self):
         self.task2_table = ttk.Treeview(self.table_frame4, selectmode=BROWSE,
-                                       columns=('ID', 'Task', 'Status'))
+                                        columns=('ID', 'Task', 'Status'))
 
         Y_Scroller = Scrollbar(self.task2_table, orient=VERTICAL, command=self.task2_table.yview)
         Y_Scroller.pack(side=RIGHT, fill=Y)
@@ -435,7 +459,7 @@ class AdminApp:
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame.place_forget()
         self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
+        # self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.chart_frame.place_forget()
         self.hide_move_product_widgets()
 
@@ -454,6 +478,9 @@ class AdminApp:
         self.task_assignment_frame2.place_forget()
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
         self.show_bar_chart()
+
+    def open_purchase_order(self):
+        subprocess.run(["python", "Purchase order.py", username])
 
     def list_all_inventory(self):
         self.table.delete(*self.table.get_children())
@@ -530,106 +557,164 @@ class AdminApp:
         if not self.table.selection():
             mb.showerror('No record selected!', 'Please select a record to edit!')
             return
-        else:
-            self.table_frame.place_forget()
-            self.button_frame_inventory.place_forget()
-            self.data_entry_frame.place_forget()
-            self.data_entry_frame.place(relx=0.10, rely=0.20, relwidth=1.0, relheight=0.90)
-            self.hide_move_product_widgets()
 
-            current_selected_product = self.table.item(self.table.focus())
-            values = current_selected_product['values']
+        current_selected_product = self.table.item(self.table.focus())
+        values = current_selected_product['values']
 
-            self.PRODUCT_NAME.set(values[2])
-            self.STOCKS.set(values[4])
-            self.CATEGORY.set(values[5])
-            self.PURCHASE_PRICE.set(values[6])
-            self.SELLING_PRICE.set(values[7])
-            self.LOCATION.set(values[8])
-            self.date.set_date(datetime.datetime.strptime(values[1], '%Y-%m-%d'))
+        # Create a new Toplevel window for editing
+        self.edit_window = CTkToplevel(self.root)
+        self.edit_window.title("Edit Inventory")
+        self.edit_window.resizable(False, False)
 
-            self.add_btn = Button(self.data_entry_frame, text='Update Record', font='Helvetica 13 bold',
-                                  bg='SpringGreen4', command=self.update_record_direct)
-            self.add_btn.place(x=270, y=220)
+        # Add a red heading
+        CTkLabel(self.edit_window, text="Edit Product", font=('Helvetica', 16, 'bold'), text_color='red').grid(row=0,
+                                                                                                               columnspan=2,
+                                                                                                               padx=10,
+                                                                                                               pady=5)
 
-            self.add_btn = Button(self.data_entry_frame, text='Cancel', font='Helvetica 13 bold',
-                                  bg='red', command=self.cancel_update)
+        # Create and place labels and entries in the new window
+        CTkLabel(self.edit_window, text="Product Name:").grid(row=1, column=0, padx=10, pady=5)
+        self.product_name_entry = CTkEntry(self.edit_window, width=400)
+        self.product_name_entry.grid(row=1, column=1, padx=10, pady=5)
+        self.product_name_entry.insert(0, values[2])
 
-            self.add_btn.place(x=420, y=220)
+        CTkLabel(self.edit_window, text="Stocks:").grid(row=2, column=0, padx=10, pady=5)
+        self.stocks_entry = CTkEntry(self.edit_window, width=400)
+        self.stocks_entry.grid(row=2, column=1, padx=10, pady=5)
+        self.stocks_entry.insert(0, values[4])
+
+        CTkLabel(self.edit_window, text="Category:").grid(row=3, column=0, padx=10, pady=5)
+        self.category_var = StringVar(self.edit_window)
+        self.category_var.set(values[5])
+        self.category_entry = CTkOptionMenu(self.edit_window, variable=self.category_var,
+                                            values=['Electronics', 'Appliances', 'Personal Care', 'Homeware',
+                                                    'Furniture'])
+        self.category_entry.grid(row=3, column=1, padx=10, pady=5)
+
+        CTkLabel(self.edit_window, text="Purchase Price:").grid(row=4, column=0, padx=10, pady=5)
+        self.purchase_price_entry = CTkEntry(self.edit_window, width=400)
+        self.purchase_price_entry.grid(row=4, column=1, padx=10, pady=5)
+        self.purchase_price_entry.insert(0, values[6])
+
+        CTkLabel(self.edit_window, text="Selling Price:").grid(row=5, column=0, padx=10, pady=5)
+        self.selling_price_entry = CTkEntry(self.edit_window, width=400)
+        self.selling_price_entry.grid(row=5, column=1, padx=10, pady=5)
+        self.selling_price_entry.insert(0, values[7])
+
+        CTkLabel(self.edit_window, text="Location:").grid(row=6, column=0, padx=10, pady=5)
+        self.location_var = StringVar(self.edit_window)
+        self.location_var.set(values[8])
+        self.location_entry = CTkOptionMenu(self.edit_window, variable=self.location_var,
+                                            values=['Receiving Area', 'Staging Area', 'Storage Area', 'Shipping Area'])
+        self.location_entry.grid(row=6, column=1, padx=10, pady=5)
+
+        CTkLabel(self.edit_window, text="Date:").grid(row=7, column=0, padx=10, pady=5)
+        self.date_entry = CTkEntry(self.edit_window, width=400)
+        self.date_entry.grid(row=7, column=1, padx=10, pady=5)
+        self.date_entry.insert(0, values[1])
+
+        # Add buttons for Update and Cancel
+        CTkButton(self.edit_window, text='Update Record', font=('Helvetica', 13, 'bold'), fg_color='SpringGreen4',
+                  command=self.update_record_direct).grid(row=8, column=0, padx=10, pady=10)
+        CTkButton(self.edit_window, text='Cancel', font=('Helvetica', 13, 'bold'), fg_color='red',
+                  command=self.edit_window.destroy).grid(row=8, column=1, padx=10, pady=10)
 
     def move_product_location(self):
         if not self.table.selection():
             mb.showerror('No record selected!', 'Please select a record to edit!')
             return
-        else:
-            self.table_frame.place_forget()
-            self.button_frame_inventory.place_forget()
-            self.data_entry_frame.place(relx=0.10, rely=0.20, relwidth=1.0, relheight=0.90)
-            self.hide_data_entry_widgets()
-            self.setup_move_product_widgets()
 
-            # self.dashboard_frame.pack(fill='both', side='top', expand=1)
+        current_selected_product = self.table.item(self.table.focus())
+        values = current_selected_product['values']
 
-            current_selected_product = self.table.item(self.table.focus())
-            values = current_selected_product['values']
+        # Create a new Toplevel window for moving product location
+        self.move_window = CTkToplevel(self.root)
+        self.move_window.title("Move Product Location")
+        self.move_window.resizable(False, False)  # Lock window resizing
+        self.move_window.geometry("450x300")
 
-            self.PRODUCT_NAME.set(values[2])
-            self.STOCKS.set(values[4])
-            self.CATEGORY.set(values[5])
-            self.PURCHASE_PRICE.set(values[6])
-            self.SELLING_PRICE.set(values[7])
-            self.LOCATION.set(values[8])
-            self.PRODUCT_ID.set(values[3])
-            self.date.set_date(datetime.datetime.strptime(values[1], '%Y-%m-%d'))
+        # Add a red heading
+        CTkLabel(self.move_window, text="Move Product Location", font=('Helvetica', 16, 'bold'), text_color='red').grid(
+            row=0, columnspan=2, padx=10, pady=5)
 
-            self.add_btn = Button(self.data_entry_frame, text='Move Product', font='Helvetica 13 bold',
-                                  bg='SpringGreen4', command=self.update_record)
-            self.add_btn.place(x=270, y=220)
+        # Setup Move Product Widgets
+        self.moveamount_label = CTkLabel(self.move_window, text='Enter Amount to add:', font=('Gill Sans MT', 13))
+        self.moveamount_label.grid(row=1, column=0, padx=10, pady=10)
+        self.moveamount = CTkEntry(self.move_window, font=('Gill Sans MT', 13), width=200,
+                                   textvariable=self.AMOUNT_TO_MOVE)
+        self.moveamount.grid(row=1, column=1, padx=10, pady=10)
 
-            self.add_btn = Button(self.data_entry_frame, text='Cancel', font='Helvetica 13 bold',
-                                  bg='red', command=self.cancel_update)
+        self.newlocation_label = CTkLabel(self.move_window, text='New Location:', font=('Gill Sans MT', 13))
+        self.newlocation_label.grid(row=2, column=0, padx=10, pady=10)
+        self.newlocation = CTkOptionMenu(self.move_window, variable=self.NEW_LOCATION,
+                                         values=['Receiving Area', 'Staging Area', 'Storage Area', 'Shipping Area'])
+        self.newlocation.grid(row=2, column=1, padx=10, pady=10)
 
-            self.add_btn.place(x=420, y=220)
+        # Get the rest of the values
+        self.PRODUCT_NAME.set(values[2])
+        self.STOCKS.set(values[4])
+        self.CATEGORY.set(values[5])
+        self.PURCHASE_PRICE.set(values[6])
+        self.SELLING_PRICE.set(values[7])
+        self.LOCATION.set(values[8])
+        self.PRODUCT_ID.set(values[3])
+        self.date.set_date(datetime.datetime.strptime(values[1], '%Y-%m-%d'))
 
-    def add_inventory(self):
-        # Generate product ID based on category
-        category_prefix = self.CATEGORY.get()[0].upper()  # Get the first letter of the category
-        count = self.cursor.execute('SELECT COUNT(*) FROM Inventory WHERE CATEGORY=?', (self.CATEGORY.get(),)).fetchone()[0]
-        product_id = f"{category_prefix}{count + 1:03d}"  # Format product ID with category prefix and padded number
+        # Add buttons for Move Product and Cancel
+        CTkButton(self.move_window, text='Move Product', font=('Helvetica', 13, 'bold'), fg_color='SpringGreen4',
+                  command=self.update_record).grid(row=3, column=0, padx=10, pady=10)
+        CTkButton(self.move_window, text='Cancel', font=('Helvetica', 13, 'bold'), fg_color='red',
+                  command=self.move_window.destroy).grid(row=3, column=1, padx=10, pady=10)
 
-        location_prefix = self.LOCATION.get()[:3].upper() # Get the first 3 letters of the location
-        product_internal_reference = f"WH-{location_prefix}-{product_id}"
+    def show_add_inventory_window(self):
+        # Create a new Toplevel window
+        self.add_window = CTkToplevel(self.root)
+        self.add_window.title("Add Inventory")
+        self.add_window.resizable(False, False)  # Lock the window size
 
-        try:
-            if (not self.date.get_date() or not self.date.get_date() or not self.STOCKS.get() or not self.CATEGORY.get() or not
-                self.PURCHASE_PRICE.get() or not self.SELLING_PRICE.get() or not self.LOCATION.get()):
-                mb.showerror('Fields empty!',
-                     "Please fill all missing fields before adding.")
-            else:
-        # Insert data into database
-                self.cursor.execute(
-                    'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE) '
-                    'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, LTRIM(RTRIM(?)), ?)',
-                    (
-                        self.date.get_date(), self.PRODUCT_NAME.get(), product_id, self.STOCKS.get(), self.CATEGORY.get(),
-                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(), product_internal_reference
-                    )
-                )
-                self.connector.commit()
+        # Add a red heading
+        CTkLabel(self.add_window, text="Add Product", font=('Helvetica', 16, 'bold'), text_color='red').grid(row=0,
+                                                                                                             columnspan=2,
+                                                                                                             padx=10,
+                                                                                                             pady=5)
 
-                mb.showinfo('Success', 'Inventory added successfully')
-                self.list_all_inventory()
+        # Add data entry widgets to the new window
+        CTkLabel(self.add_window, text="Product Name").grid(row=1, column=0, padx=10, pady=5)
+        CTkEntry(self.add_window, textvariable=self.PRODUCT_NAME, width=400).grid(row=1, column=1, padx=10, pady=5)
 
-                # Generate PDF report
-                self.generate_pdf_report(
-                    self.PRODUCT_NAME.get(), product_id, self.STOCKS.get(), self.CATEGORY.get(),
-                    self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
-                    self.date.get_date(), 'Add'
-                )
+        CTkLabel(self.add_window, text="Stocks").grid(row=2, column=0, padx=10, pady=5)
+        CTkEntry(self.add_window, textvariable=self.STOCKS, width=400).grid(row=2, column=1, padx=10, pady=5)
 
-                self.clear_fields()
-        except:
-            mb.showerror("Error", "Inappropriate values.")
+        CTkLabel(self.add_window, text="Category").grid(row=3, column=0, padx=10, pady=5)
+        CTkOptionMenu(self.add_window, variable=self.CATEGORY,
+                      values=['Electronics', 'Appliances', 'Personal Care', 'Homeware', 'Furniture']).grid(row=3,
+                                                                                                           column=1,
+                                                                                                           padx=10,
+                                                                                                           pady=5)
+
+        CTkLabel(self.add_window, text="Purchase Price").grid(row=4, column=0, padx=10, pady=5)
+        CTkEntry(self.add_window, textvariable=self.PURCHASE_PRICE, width=400).grid(row=4, column=1, padx=10,
+                                                                                    pady=5)
+
+        CTkLabel(self.add_window, text="Selling Price").grid(row=5, column=0, padx=10, pady=5)
+        CTkEntry(self.add_window, textvariable=self.SELLING_PRICE, width=400).grid(row=5, column=1, padx=10, pady=5)
+
+        CTkLabel(self.add_window, text="Location").grid(row=6, column=0, padx=10, pady=5)
+        CTkOptionMenu(self.add_window, variable=self.LOCATION,
+                      values=['Receiving Area', 'Staging Area', 'Storage Area', 'Shipping Area']).grid(row=6,
+                                                                                                       column=1,
+                                                                                                       padx=10,
+                                                                                                       pady=5)
+
+        CTkLabel(self.add_window, text="Date").grid(row=7, column=0, padx=10, pady=5)
+        DateEntry(self.add_window, date=datetime.datetime.now().date(), font=('Gill Sans MT', 13)).grid(row=7, column=1,
+                                                                                                        padx=10, pady=5)
+
+        # Add buttons for submitting and cancelling
+        CTkButton(self.add_window, text='Add Inventory', font=('Helvetica', 13, 'bold'), fg_color='SpringGreen4',
+                  command=self.add_inventory).grid(row=8, column=0, padx=10, pady=10)
+        CTkButton(self.add_window, text='Cancel', font=('Helvetica', 13, 'bold'), fg_color='red',
+                  command=self.add_window.destroy).grid(row=8, column=1, padx=10, pady=10)
 
     def update_record(self):
         global new_stock_existing
@@ -680,10 +765,12 @@ class AdminApp:
                 new_internal_reference = f"WH-{location_prefix}-{self.PRODUCT_ID.get()}"
 
                 self.connector.execute(
-                    'INSERT INTO Inventory (date, PRODUCT_NAME, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE, PRODUCT_ID) '
+                    'INSERT INTO Inventory (date, PRODUCT_NAME, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, '
+                    'LOCATION, INTERNAL_REFERENCE, PRODUCT_ID)'
                     'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, ?, ?)', (
                         self.date.get_date(), self.PRODUCT_NAME.get(), amount_to_move, self.CATEGORY.get(),
-                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location, new_internal_reference, self.PRODUCT_ID.get())
+                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location, new_internal_reference,
+                        self.PRODUCT_ID.get())
                 )
 
             self.connector.commit()
@@ -729,49 +816,29 @@ class AdminApp:
             mb.showerror("Error", f"Inappropriate values. {str(e)}")
 
     def update_record_direct(self):
-        current_selected_product = self.table.item(self.table.focus())
-        contents = current_selected_product['values']
-
         try:
             # Validate required fields
-            if (
-                    not self.date.get() or not self.PRODUCT_NAME.get() or not self.STOCKS.get() or not self.CATEGORY.get() or
-                    not self.PURCHASE_PRICE.get() or not self.SELLING_PRICE.get() or not self.LOCATION.get()):
-                mb.showerror('Fields empty or invalid amount!',
-                             "Please fill all missing fields.")
+            if not self.date_entry.get() or not self.product_name_entry.get() or not self.stocks_entry.get() or not self.category_entry.get() or \
+                    not self.purchase_price_entry.get() or not self.selling_price_entry.get() or not self.location_entry.get():
+                mb.showerror('Fields empty or invalid amount!', "Please fill all missing fields.")
                 return
 
             # Update the product record directly
             self.connector.execute(
                 'UPDATE Inventory SET date=?, PRODUCT_NAME=LTRIM(RTRIM(?)), STOCKS=?, CATEGORY=?, PURCHASE_PRICE=?, '
                 'SELLING_PRICE=?, LOCATION=? WHERE PRODUCT_REAL_ID=?', (
-                    self.date.get_date(), self.PRODUCT_NAME.get(), int(self.STOCKS.get()), self.CATEGORY.get(),
-                    self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(), contents[0])
+                    self.date_entry.get(), self.product_name_entry.get(), int(self.stocks_entry.get()),
+                    self.category_entry.get(),
+                    self.purchase_price_entry.get(), self.selling_price_entry.get(), self.location_entry.get(),
+                    self.table.item(self.table.focus())['values'][0])
             )
 
             self.connector.commit()
 
             mb.showinfo('Updated successfully',
-                        f'The record of {self.PRODUCT_NAME.get()} was updated successfully.')
+                        f'The record of {self.product_name_entry.get()} was updated successfully.')
             self.list_all_inventory()
-            self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
-            self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-            self.add_btn.place_forget()
-            # self.add_btn1.place_forget()
-            # self.add_btn2.place_forget()
-            # self.add_btn3.place_forget()
-            self.data_entry_frame.place_forget()
-            self.data_entry_frame.pack()
-            self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.30)
-
-            # Generate PDF report for the updated record
-            self.generate_pdf_report(
-                self.PRODUCT_NAME.get(), contents[0], int(self.STOCKS.get()), self.CATEGORY.get(),
-                self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
-                self.date.get(), 'Edit'
-            )
-
-            self.clear_fields()
+            self.edit_window.destroy()
         except Exception as e:
             mb.showerror("Error", f"Inappropriate values. {str(e)}")
 
@@ -779,13 +846,10 @@ class AdminApp:
         self.list_all_inventory()
         self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.data_entry_frame.pack()
-        self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.30)
         self.hide_move_product_widgets()
         self.hide_data_entry_widgets()
         self.setup_data_entry_widgets()
         self.clear_fields()
-
 
     # User Management
     def open_user_management_panel(self):
@@ -793,7 +857,6 @@ class AdminApp:
         self.chart_frame.place_forget()
         self.button_frame_users.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.table_frame2.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-
 
     def load_users(self):
         self.user_table.delete(*self.user_table.get_children())
@@ -941,7 +1004,8 @@ class AdminApp:
         conn.close()
         self.load_tasks()
 
-    def generate_pdf_report(self, product_name, product_id, stocks, category, purchase_price, selling_price, location, date, action):
+    def generate_pdf_report(self, product_name, product_id, stocks, category, purchase_price, selling_price, location,
+                            date, action):
         pdf = FPDF()
         pdf.add_page()
 
@@ -969,7 +1033,8 @@ class AdminApp:
     def show_bar_chart(self):
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
 
-        all_data = self.connector.execute('SELECT PRODUCT_NAME, STOCKS FROM Inventory')
+        # Modify SQL query to group by product name and sum stocks
+        all_data = self.connector.execute('SELECT PRODUCT_NAME, SUM(STOCKS) FROM Inventory GROUP BY PRODUCT_NAME')
         data = all_data.fetchall()
 
         if not data:
@@ -979,11 +1044,10 @@ class AdminApp:
         product_names = [item[0] for item in data]
         stocks = [item[1] for item in data]
 
-
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.bar(product_names, stocks, color='orange')
         ax.set_xlabel('Product Name', color='black')
-        ax.set_ylabel('Stocks', color='black')
+        ax.set_ylabel('Total Stocks', color='black')
         ax.set_title('Inventory Stocks', color='black')
 
         # Set the tick positions to match the number of products
@@ -1005,6 +1069,7 @@ class AdminApp:
         root.quit()
         root.destroy()
         subprocess.Popen(["python", "login.py"])
+
 
 if __name__ == '__main__':
     username = sys.argv[1] if len(sys.argv) > 1 else "Unknown"
