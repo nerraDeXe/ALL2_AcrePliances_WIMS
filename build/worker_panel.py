@@ -1,6 +1,8 @@
 import datetime
 import sqlite3
 import matplotlib.pyplot as plt
+import customtkinter
+from customtkinter import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 # from matplotlib import style
 from tkcalendar import DateEntry
@@ -13,6 +15,7 @@ import subprocess
 import hashlib
 from PIL import Image, ImageTk
 import sys
+
 
 class WorkerApp:
     def __init__(self, root, username):
@@ -29,32 +32,10 @@ class WorkerApp:
         )
         self.connector.commit()
 
-        # self.connector.execute(
-        #     'CREATE TABLE IF NOT EXISTS Incoming ('
-        #     'INCOMING_ID INTEGER PRIMARY KEY,'
-        #     'PRODUCT_ID TEXT NOT NULL,'
-        #     'STOCKS INTEGER NOT NULL,'
-        #     'CATEGORY VARCHAR(30) NOT NULL,'
-        #     'VENDOR TEXT NOT NULL,'
-        #     'date DATE'
-        # )
-        # self.connector.commit()
-        #
-        # self.connector.execute(
-        #     'CREATE TABLE IF NOT EXISTS Outgoing ('
-        #     'OUTGOING_ID INTEGER PRIMARY KEY,'
-        #     'PRODUCT_ID TEXT NOT NULL,'
-        #     'STOCKS INTEGER NOT NULL,'
-        #     'CATEGORY VARCHAR(30) NOT NULL,'
-        #     'BRANCH TEXT NOT NULL,'
-        #     'date DATE'
-        # )
-        # self.connector.commit()
-
         self.root = root
         self.username = username
         self.root.title('ACREPILLANCE')
-        self.root.geometry('1280x850')
+        self.root.geometry('1920x1000')
         self.root.resizable(0, 0)
 
         self.setup_variables()
@@ -63,11 +44,11 @@ class WorkerApp:
         sv_ttk.set_theme("light")
         self.root.tk.call("source", "azure.tcl")
         self.root.tk.call("set_theme", "light")
+        customtkinter.set_appearance_mode("light")
         self.custom_style = ttk.Style()
-        self.custom_style.configure('Bold.TButton', font=('Helvetica', 12, 'bold'))
+        self.custom_style.configure('Bold.TButton', font=('Helvetica', 12, 'bold'), background="black")
 
         self.list_all_inventory()
-        self.load_users()
 
     def setup_variables(self):
         self.PRODUCT_NAME = StringVar()
@@ -84,20 +65,16 @@ class WorkerApp:
 
     def setup_frames(self):
         self.dashboard_frame = Frame(self.root, bg='#C21A2F')
-        self.dashboard_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.15)
+        self.dashboard_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.20)
 
-        self.button_frame = Frame(self.root)
+        self.button_frame = Frame(self.root, bg='#9C0014')
         self.button_frame.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
 
-        self.button_frame_inventory = Frame(self.root)
+        self.button_frame_inventory = Frame(self.root, bg='#9C0014')
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.15, relwidth=0.22)
         self.button_frame_inventory.place_forget()
 
-        self.button_frame_users = Frame(self.root)
-        self.button_frame_users.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.button_frame_users.place_forget()
-
-        self.button_frame_tasks = Frame(self.root)
+        self.button_frame_tasks = Frame(self.root, bg='#9C0014')
         self.button_frame_tasks.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
         self.button_frame_tasks.place_forget()
 
@@ -136,11 +113,6 @@ class WorkerApp:
         self.task_assignment_frame2.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.task_assignment_frame2.place_forget()
 
-        self.order_frame = Frame(self.root)
-        self.order_frame.pack()
-        self.order_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
-        self.order_frame.place_forget()
-
         self.chart_frame = Frame(self.root)
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.65)
         self.show_bar_chart()
@@ -151,45 +123,13 @@ class WorkerApp:
         self.setup_button_widgets()
         self.setup_inventory_button_widgets()
         self.setup_table()
-        self.setup_user_management_button_widgets()
         self.setup_user_table()
         # self.setup_tasks_button_widgets()
-        self.setup_tasks_entry_widgets()
         # self.setup_tasks_table()
         self.setup_tasks2_button_widgets()
         self.setup_tasks2_entry_widgets()
         self.setup_tasks2_table()
         # self.load_dashboard_image()
-
-    # def load_dashboard_image(self):
-    #     # Load the image
-    #     image_path = "C:/Users/LIM TZE TA/PycharmProjects/project2/build/assets/frame0/default-monochrome1.png"
-    #     original_image = Image.open(image_path).convert("RGBA")
-    #
-    #     background_color = (194, 26, 47, 255)
-    #
-    #     data = original_image.getdata()
-    #     new_data = []
-    #     for item in data:
-    #         # Change all white (also check alpha as white has alpha 255)
-    #         if item[0] == 255 and item[1] == 255 and item[2] == 255 and item[3] == 255:
-    #             new_data.append(background_color)
-    #         else:
-    #             new_data.append(item)
-    #
-    #     original_image.putdata(new_data)
-    #
-    #
-    #     # Resize image to fit in the dashboard frame
-    #     resized_image = original_image.resize((285, 45))  # Adjust size as needed
-    #     self.dashboard_image = ImageTk.PhotoImage(resized_image)
-    #
-    #     # Create and place the label
-    #     self.image_label = Label(self.dashboard_frame, image=self.dashboard_image, bg='#C21A2F')
-    #     self.image_label.place(relx=0.5, rely=0.5, anchor='center')
-    #
-    #     self.username_label = Label(self.root, text=f"Welcome, {self.username}", font=("Microsoft YaHei UI Light", 15), bg="#C21A2F", fg='white')
-    #     self.username_label.place(x=50, y=50)
 
     def setup_data_entry_widgets(self):
         # Setup Data Entry Widgets
@@ -200,12 +140,14 @@ class WorkerApp:
 
         self.product_name_label = ttk.Label(self.data_entry_frame, text='Product Name:', font=('Gill Sans MT', 13))
         self.product_name_label.place(x=130, y=80)
-        self.product_name = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20, textvariable=self.PRODUCT_NAME)
+        self.product_name = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20,
+                                      textvariable=self.PRODUCT_NAME)
         self.product_name.place(x=300, y=80)
 
         self.location_label = ttk.Label(self.data_entry_frame, text='Location:', font=('Gill Sans MT', 13))
         self.location_label.place(x=130, y=120)
-        self.location_menu = ttk.OptionMenu(self.data_entry_frame, self.LOCATION, 'Receiving Area', 'Receiving Area', 'Staging Area', 'Storage Area', 'Shipping Area')
+        self.location_menu = ttk.OptionMenu(self.data_entry_frame, self.LOCATION, 'Receiving Area', 'Receiving Area',
+                                            'Staging Area', 'Storage Area', 'Shipping Area')
         self.location_menu.place(x=300, y=120)
 
         self.stocks_label = ttk.Label(self.data_entry_frame, text='Stocks:', font=('Gill Sans MT', 13))
@@ -215,17 +157,20 @@ class WorkerApp:
 
         self.category_label = ttk.Label(self.data_entry_frame, text='Category:', font=('Gill Sans MT', 13))
         self.category_label.place(x=580, y=40)
-        self.dd1 = ttk.OptionMenu(self.data_entry_frame, self.CATEGORY, 'Electronics', 'Electronics', 'Appliances', 'Personal Care', 'Homeware', 'Furniture')
+        self.dd1 = ttk.OptionMenu(self.data_entry_frame, self.CATEGORY, 'Electronics', 'Electronics', 'Appliances',
+                                  'Personal Care', 'Homeware', 'Furniture')
         self.dd1.place(x=750, y=35)
 
         self.purchase_label = ttk.Label(self.data_entry_frame, text='Purchase Price:', font=('Gill Sans MT', 13))
         self.purchase_label.place(x=580, y=120)
-        self.purchase = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20, textvariable=self.PURCHASE_PRICE)
+        self.purchase = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20,
+                                  textvariable=self.PURCHASE_PRICE)
         self.purchase.place(x=750, y=120)
 
         self.selling_label = ttk.Label(self.data_entry_frame, text='Selling Price:', font=('Gill Sans MT', 13))
         self.selling_label.place(x=580, y=160)
-        self.selling = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20, textvariable=self.SELLING_PRICE)
+        self.selling = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=20,
+                                 textvariable=self.SELLING_PRICE)
         self.selling.place(x=750, y=160)
 
         # Hide Data Entry Widgets
@@ -252,12 +197,14 @@ class WorkerApp:
         # Setup Move Product Widgets
         self.moveamount_label = ttk.Label(self.data_entry_frame, text='Enter Amount to add:', font=('Gill Sans MT', 13))
         self.moveamount_label.place(x=200, y=40)
-        self.moveamount = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=70, textvariable=self.AMOUNT_TO_MOVE)
+        self.moveamount = ttk.Entry(self.data_entry_frame, font=('Gill Sans MT', 13), width=70,
+                                    textvariable=self.AMOUNT_TO_MOVE)
         self.moveamount.place(x=200, y=70)
 
         self.newlocation_label = ttk.Label(self.data_entry_frame, text='New Location:', font=('Gill Sans MT', 13))
         self.newlocation_label.place(x=200, y=110)
-        self.newlocation = ttk.OptionMenu(self.data_entry_frame, self.NEW_LOCATION, 'Receiving Area', 'Receiving Area', 'Staging Area', 'Storage Area', 'Shipping Area')
+        self.newlocation = ttk.OptionMenu(self.data_entry_frame, self.NEW_LOCATION, 'Receiving Area', 'Receiving Area',
+                                          'Staging Area', 'Storage Area', 'Shipping Area')
         self.newlocation.place(x=200, y=140)
 
         # Hide Move Product Widgets
@@ -270,15 +217,11 @@ class WorkerApp:
         # Make the hide function available
         self.hide_move_product_widgets = hide
 
+    # Dashboard's buttons
     def setup_button_widgets(self):
-        # ttk.Button(self.button_frame, text='User Management', command=self.open_user_management_panel, style='Bold.TButton'
-        #             ).place(x=40, y=35, width=200, height=50)
 
         ttk.Button(self.button_frame, text='Inventory Management', width=20, style='Bold.TButton',
                    command=self.open_inventory_panel).place(x=40, y=135, width=200, height=50)
-
-        # ttk.Button(self.button_frame, text='Task Assignment', width=20, style='Bold.TButton',
-        #            command=self.open_task_panel).place(x=40, y=235, width=200, height=50)
 
         ttk.Button(self.button_frame, text='Tasks', width=20, style='Bold.TButton',
                    command=self.open_task2_panel).place(x=40, y=35, width=200, height=50)
@@ -286,65 +229,38 @@ class WorkerApp:
         ttk.Button(self.button_frame, text='Log out', command=self.restart_login_page, style='Bold.TButton',
                    width=20).place(x=20, y=630, width=100, height=30)
 
+    # Inventory Management Buttons
+
     def setup_inventory_button_widgets(self):
-        ttk.Button(self.button_frame_inventory, text='Add Inventory', command=self.add_inventory, width=20, style='Bold.TButton'
-                   ).place(x=40, y=35, width=200, height=40)
 
-        ttk.Button(self.button_frame_inventory, text='Delete Inventory', width=20, style='Bold.TButton',
-                   command=self.remove_inventory).place(x=40, y=115, width=200, height=40)
+        CTkButton(self.button_frame_inventory, text='Add Inventory', command=self.add_inventory, width=275,
+                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=75, y=80, anchor=W)
 
-        ttk.Button(self.button_frame_inventory, text='Clear Fields', width=20, style='Bold.TButton',
-                   command=self.clear_fields).place(x=40, y=195, width=200, height=40)
+        CTkButton(self.button_frame_inventory, text='Delete Inventory', command=self.remove_inventory, width=275,
+                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=75, y=180, anchor=W)
 
-        ttk.Button(self.button_frame_inventory, text='Delete All Inventory', width=20, style='Bold.TButton',
-                   command=self.remove_all_inventory).place(x=40, y=275, width=200, height=40)
+        CTkButton(self.button_frame_inventory, text='Edit Selected Product', command=self.edit_product_details,
+                  width=275, height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=75, y=290, anchor=W)
 
-        ttk.Button(self.button_frame_inventory, text='View Product\'s Details', width=20, style='Bold.TButton',
-                   command=self.view_product_details).place(x=40, y=355, width=200, height=40)
+        CTkButton(self.button_frame_inventory, text='Move Product Location', command=self.move_product_location,
+                  width=275, height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=75, y=400, anchor=W)
 
-        ttk.Button(self.button_frame_inventory, text='Edit Selected Product', command=self.edit_product_details, style='Bold.TButton',
-                   width=20).place(x=40, y=435, width=200, height=40)
-
-        ttk.Button(self.button_frame_inventory, text='Move Product Location', command=self.move_product_location,
-                   style='Bold.TButton',
-                   width=20).place(x=40, y=515, width=200, height=40)
-
-        ttk.Button(self.button_frame_inventory, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=630, width=60, height=30)
-
-    def setup_user_management_button_widgets(self):
-        ttk.Button(self.button_frame_users, text='Add User', command=self.add_user, width=20, style='Bold.TButton',
-                   ).place(x=40, y=35, width=200, height=50)
-
-        ttk.Button(self.button_frame_users, text='Delete User', width=20, style='Bold.TButton',
-                   command=self.delete_user).place(x=40, y=135, width=200, height=50)
-
-        ttk.Button(self.button_frame_users, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=335, width=60, height=30)
-
-    # def setup_tasks_button_widgets(self):
-    #     ttk.Button(self.button_frame_tasks, text='Assign Task', command=self.assign_task, width=20, style='Bold.TButton',
-    #                ).place(x=40, y=35, width=200, height=50)
-    #     ttk.Button(self.button_frame_tasks, text='Back', command=self.close_subpanel, style='Bold.TButton',
-    #                width=20).place(x=20, y=630, width=60, height=30)
-
-    def setup_tasks_entry_widgets(self):
-
-        self.task_entry_label = ttk.Label(self.task_assignment_frame, text='Task:', font=('Gill Sans MT', 13))
-        self.task_entry_label.place(x=130, y=30)
-        self.task_entry = ttk.Entry(self.task_assignment_frame, font=('Gill Sans MT', 13), width=20)
-        self.task_entry.place(x=300, y=30)
-
-        self.worker_label = ttk.Label(self.task_assignment_frame, text='Assign to Worker:', font=('Gill Sans MT', 13))
-        self.worker_label.place(x=130, y=80)
-        self.worker_entry = ttk.Entry(self.task_assignment_frame, font=('Gill Sans MT', 13), width=20)
-        self.worker_entry.place(x=300, y=80)
-
-        # self.assign_button = ttk.Button(self.task_assignment_frame, text='Assign', command=self.assign_task, style='Bold.TButton',
-        #            width=20).place(x=300, y=130, width=160, height=50)
+        CTkButton(self.button_frame_inventory, text='Back', command=self.close_subpanel, width=90, height=45,
+                  border_width=0, fg_color='red', border_color='black', text_color='white',
+                  font=('Microsoft YaHei UI Light', 16), corner_radius=15, hover_color='orange'
+                  ).place(x=160, y=500, anchor=W)
 
     def setup_tasks2_button_widgets(self):
-        ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20, style='Bold.TButton',
+        ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20,
+                   style='Bold.TButton',
                    ).place(x=40, y=35, width=200, height=50)
         ttk.Button(self.button_frame_tasks2, text='Back', command=self.close_subpanel, style='Bold.TButton',
                    width=20).place(x=20, y=630, width=60, height=30)
@@ -368,8 +284,9 @@ class WorkerApp:
 
     def setup_table(self):
         self.table = ttk.Treeview(self.table_frame, selectmode=BROWSE,
-                                  columns=('PRODUCT_REAL_ID','DATE', 'PRODUCT_NAME', 'PRODUCT_ID' , 'STOCKS', 'CATEGORY',
-                                           'PURCHASE_PRICE', 'SELLING_PRICE', 'LOCATION', 'INTERNAL_REFERENCE'))
+                                  columns=(
+                                      'PRODUCT_REAL_ID', 'DATE', 'PRODUCT_NAME', 'PRODUCT_ID', 'STOCKS', 'CATEGORY',
+                                      'PURCHASE_PRICE', 'SELLING_PRICE', 'LOCATION', 'INTERNAL_REFERENCE'))
 
         X_Scroller = Scrollbar(self.table, orient=HORIZONTAL, command=self.table.xview)
         Y_Scroller = Scrollbar(self.table, orient=VERTICAL, command=self.table.yview)
@@ -423,30 +340,9 @@ class WorkerApp:
 
         self.user_table.place(relx=0, rely=0, relheight=1, relwidth=1)
 
-    # def setup_tasks_table(self):
-    #     self.task_table = ttk.Treeview(self.table_frame3, selectmode=BROWSE,
-    #                                    columns=('ID', 'Task', 'Assigned To', 'Status'))
-    #
-    #     Y_Scroller = Scrollbar(self.task_table, orient=VERTICAL, command=self.task_table.yview)
-    #     Y_Scroller.pack(side=RIGHT, fill=Y)
-    #
-    #     self.task_table.config(yscrollcommand=Y_Scroller.set)
-    #
-    #     self.task_table.heading('ID', text='ID', anchor=CENTER)
-    #     self.task_table.heading('Task', text='Task', anchor=CENTER)
-    #     self.task_table.heading('Assigned To', text='Assigned To', anchor=CENTER)
-    #     self.task_table.heading('Status', text='Status', anchor=CENTER)
-    #
-    #     self.task_table.column('#0', width=0, stretch=NO)
-    #     self.task_table.column('#1', width=50, stretch=NO)
-    #     self.task_table.column('#2', width=300, stretch=NO)
-    #     self.task_table.column('#3', width=50, stretch=NO)
-    #
-    #     self.task_table.place(relx=0, rely=0, relheight=1, relwidth=1)
-
     def setup_tasks2_table(self):
         self.task2_table = ttk.Treeview(self.table_frame4, selectmode=BROWSE,
-                                       columns=('ID', 'Task', 'Status'))
+                                        columns=('ID', 'Task', 'Status'))
 
         Y_Scroller = Scrollbar(self.task2_table, orient=VERTICAL, command=self.task2_table.yview)
         Y_Scroller.pack(side=RIGHT, fill=Y)
@@ -463,7 +359,7 @@ class WorkerApp:
 
         self.task2_table.place(relx=0, rely=0, relheight=1, relwidth=1)
 
-    # Inventory Management
+    # Panel's buttons function
     def open_inventory_panel(self):
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame.place_forget()
@@ -488,6 +384,7 @@ class WorkerApp:
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
         self.show_bar_chart()
 
+    # Inventory Management Functions
     def list_all_inventory(self):
         self.table.delete(*self.table.get_children())
 
@@ -526,39 +423,6 @@ class WorkerApp:
             self.list_all_inventory()
             mb.showinfo('Record deleted successfully!', f'The record of {values_selected[0]} was deleted successfully')
 
-    def remove_all_inventory(self):
-        surety = mb.askyesno('Are you sure?', 'Are you sure that you want to delete all the records from the database?',
-                             icon='warning')
-
-        if surety:
-            self.table.delete(*self.table.get_children())
-
-            self.connector.execute('DELETE FROM Inventory')
-            self.connector.commit()
-
-            self.list_all_inventory()
-            mb.showinfo('All Records deleted successfully!', 'All the records were deleted successfully')
-
-    def view_product_details(self):
-        if not self.table.selection():
-            mb.showerror('No record selected!', 'Please select a record to view!')
-            return
-
-        current_selected_product = self.table.item(self.table.focus())
-        values = current_selected_product['values']
-
-        view_details_window = Toplevel()
-        view_details_window.geometry('400x400')
-        view_details_window.title(f'Record of {values[1]}')
-
-        Label(view_details_window, text=f"Product Name: {values[1]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Product ID: {values[2]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Stocks: {values[3]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Category: {values[4]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Purchase Price: {values[5]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Selling Price: {values[6]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Location: {values[7]}", font=('Gill Sans MT', 13)).pack()
-
     def edit_product_details(self):
         if not self.table.selection():
             mb.showerror('No record selected!', 'Please select a record to edit!')
@@ -585,7 +449,7 @@ class WorkerApp:
             self.add_btn.place(x=270, y=220)
 
             self.add_btn2 = Button(self.data_entry_frame, text='Cancel', font='Helvetica 13 bold',
-                                  bg='red', command=self.cancel_update)
+                                   bg='red', command=self.cancel_update)
 
             self.add_btn2.place(x=420, y=220)
 
@@ -626,25 +490,29 @@ class WorkerApp:
     def add_inventory(self):
         # Generate product ID based on category
         category_prefix = self.CATEGORY.get()[0].upper()  # Get the first letter of the category
-        count = self.cursor.execute('SELECT COUNT(*) FROM Inventory WHERE CATEGORY=?', (self.CATEGORY.get(),)).fetchone()[0]
+        count = \
+            self.cursor.execute('SELECT COUNT(*) FROM Inventory WHERE CATEGORY=?', (self.CATEGORY.get(),)).fetchone()[0]
         product_id = f"{category_prefix}{count + 1:03d}"  # Format product ID with category prefix and padded number
 
-        location_prefix = self.LOCATION.get()[:3].upper() # Get the first 3 letters of the location
+        location_prefix = self.LOCATION.get()[:3].upper()  # Get the first 3 letters of the location
         product_internal_reference = f"WH-{location_prefix}-{product_id}"
 
         try:
-            if (not self.date.get_date() or not self.date.get_date() or not self.STOCKS.get() or not self.CATEGORY.get() or not
-                self.PURCHASE_PRICE.get() or not self.SELLING_PRICE.get() or not self.LOCATION.get()):
+            if (
+                    not self.date.get_date() or not self.date.get_date() or not self.STOCKS.get() or not self.CATEGORY.get() or not
+            self.PURCHASE_PRICE.get() or not self.SELLING_PRICE.get() or not self.LOCATION.get()):
                 mb.showerror('Fields empty!',
-                     "Please fill all missing fields before adding.")
+                             "Please fill all missing fields before adding.")
             else:
-        # Insert data into database
+                # Insert data into database
                 self.cursor.execute(
                     'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE) '
                     'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, LTRIM(RTRIM(?)), ?)',
                     (
-                        self.date.get_date(), self.PRODUCT_NAME.get(), product_id, self.STOCKS.get(), self.CATEGORY.get(),
-                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(), product_internal_reference
+                        self.date.get_date(), self.PRODUCT_NAME.get(), product_id, self.STOCKS.get(),
+                        self.CATEGORY.get(),
+                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
+                        product_internal_reference
                     )
                 )
                 self.connector.commit()
@@ -819,96 +687,6 @@ class WorkerApp:
         self.setup_data_entry_widgets()
         self.clear_fields()
 
-
-    # User Management
-    def open_user_management_panel(self):
-        self.button_frame.place_forget()
-        self.chart_frame.place_forget()
-        self.button_frame_users.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
-        self.table_frame2.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-
-
-    def load_users(self):
-        self.user_table.delete(*self.user_table.get_children())
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT id, username, role FROM users')
-        users = cursor.fetchall()
-        conn.close()
-
-        for user in users:
-            self.user_table.insert('', END, values=user)
-
-    def add_user(self):
-        def save_user():
-            username = username_var.get()
-            password = password_var.get()
-            role = role_var.get()
-
-            if username and password and role:
-                hashed_password = hashlib.sha256(password.encode()).hexdigest()
-                conn = sqlite3.connect('users.db')
-                cursor = conn.cursor()
-                cursor.execute('INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-                               (username, hashed_password, role))
-                conn.commit()
-                conn.close()
-                mb.showinfo('User added', 'The user was successfully added')
-                self.load_users()
-                add_user_window.destroy()
-
-            else:
-                mb.showerror('Error', 'All fields are required')
-
-        add_user_window = Toplevel(self.root)
-        add_user_window.title('Add User')
-        add_user_window.geometry('300x200')
-
-        username_var = StringVar()
-        password_var = StringVar()
-        role_var = StringVar()
-
-        Label(add_user_window, text='Username:').place(x=20, y=20)
-        Entry(add_user_window, textvariable=username_var).place(x=100, y=20)
-
-        Label(add_user_window, text='Password:').place(x=20, y=60)
-        Entry(add_user_window, textvariable=password_var, show='*').place(x=100, y=60)
-
-        Label(add_user_window, text='Role:').place(x=20, y=100)
-        ttk.OptionMenu(add_user_window, role_var, 'Supervisor', 'Supervisor',
-                       'Worker').place(x=100, y=100)
-
-        Button(add_user_window, text='Save', command=save_user).place(x=120, y=150)
-
-    def delete_user(self):
-        selected_item = self.user_table.selection()
-        if not selected_item:
-            mb.showerror('No user selected!', 'Please select a user to delete')
-        else:
-            current_item = self.user_table.focus()
-            contents = self.user_table.item(current_item)
-            selected_user = contents['values']
-
-            confirm = mb.askyesno('Delete user?', f'Are you sure you want to delete user {selected_user[1]}?',
-                                  icon='warning')
-            if confirm:
-                conn = sqlite3.connect('users.db')
-                cursor = conn.cursor()
-                cursor.execute('DELETE FROM users WHERE id = ?', (selected_user[0],))
-                conn.commit()
-                conn.close()
-
-                self.user_table.delete(current_item)
-                mb.showinfo('User deleted', 'The selected user was successfully deleted')
-
-    # def open_task_panel(self):
-    #     self.button_frame.place_forget()
-    #     self.chart_frame.place_forget()
-    #     self.table_frame3.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-    #     self.button_frame_tasks.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-    #     self.task_assignment_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
-    #     self.load_tasks()
-
     def open_task2_panel(self):
         self.button_frame.place_forget()
         self.chart_frame.place_forget()
@@ -916,17 +694,6 @@ class WorkerApp:
         self.button_frame_tasks2.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
         self.task_assignment_frame2.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.load_tasks2()
-
-    # def load_tasks(self):
-    #     self.task_table.delete(*self.task_table.get_children())
-    #     conn = sqlite3.connect('users.db')
-    #     cursor = conn.cursor()
-    #     cursor.execute('SELECT id, task, assigned_to, status FROM tasks')
-    #     tasks = cursor.fetchall()
-    #     conn.close()
-    #
-    #     for task in tasks:
-    #         self.task_table.insert("", "end", values=(task[0], task[1], task[2], task[3]), iid=task[0])
 
     def load_tasks2(self):
         for i in self.task2_table.get_children():
@@ -960,24 +727,10 @@ class WorkerApp:
         else:
             mb.showwarning("Selection Error", "Please select a task to update.")
 
-    # def assign_task(self):
-    #     task = self.task_entry.get()
-    #     worker = self.worker_entry.get()
-    #     if not task or not worker:
-    #         mb.showerror("Error", "Please fill in all fields")
-    #         return
-    #
-    #     conn = sqlite3.connect('users.db')
-    #     cursor = conn.cursor()
-    #     cursor.execute("INSERT INTO tasks (task, assigned_to, status) VALUES (?, ?, ?)", (task, worker, "Incomplete"))
-    #     conn.commit()
-    #     conn.close()
-    #     self.load_tasks()
-
     def add_incoming(self):
         category_prefix = self.CATEGORY.get()[0].upper()  # Get the first letter of the category
         count = \
-        self.cursor.execute('SELECT COUNT(*) FROM Inventory WHERE CATEGORY=?', (self.CATEGORY.get(),)).fetchone()[0]
+            self.cursor.execute('SELECT COUNT(*) FROM Inventory WHERE CATEGORY=?', (self.CATEGORY.get(),)).fetchone()[0]
         product_id = f"{category_prefix}{count + 1:03d}"  # Format product ID with category prefix and padded number
 
         location_prefix = self.LOCATION.get()[:3].upper()  # Get the first 3 letters of the location
@@ -992,7 +745,8 @@ class WorkerApp:
             else:
                 # Insert data into database
                 self.cursor.execute(
-                    'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE) '
+                    'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, '
+                    'SELLING_PRICE, LOCATION, INTERNAL_REFERENCE)'
                     'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, LTRIM(RTRIM(?)), ?)',
                     (
                         self.date.get_date(), self.PRODUCT_NAME.get(), product_id, self.STOCKS.get(),
@@ -1017,7 +771,8 @@ class WorkerApp:
         except:
             mb.showerror("Error", "Inappropriate values.")
 
-    def generate_pdf_report(self, product_name, product_id, stocks, category, purchase_price, selling_price, location, date, action):
+    def generate_pdf_report(self, product_name, product_id, stocks, category, purchase_price, selling_price, location,
+                            date, action):
         pdf = FPDF()
         pdf.add_page()
 
@@ -1081,6 +836,7 @@ class WorkerApp:
         root.quit()
         root.destroy()
         subprocess.Popen(["python", "login.py"])
+
 
 if __name__ == '__main__':
     username = sys.argv[1] if len(sys.argv) > 1 else "Unknown"
