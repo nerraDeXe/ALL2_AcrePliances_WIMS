@@ -306,11 +306,16 @@ class SalesVendorApp:
             messagebox.showwarning('Error', 'Please select an order to delete.')
             return
 
+        confirm = messagebox.askyesno('Confirm Delete', 'Are you sure you want to delete the selected order?')
+        if not confirm:
+            return
+
         order_id = self.order_tree.item(selected_item)['values'][0]
         self.cursor3.execute('DELETE FROM Orders WHERE ORDER_ID=?', (order_id,))
         self.connector3.commit()
         self.load_order_data()
         messagebox.showinfo('Success', 'Order deleted successfully!')
+
 
     def load_vendor_data(self):
         self.vendor_tree.delete(*self.vendor_tree.get_children())
@@ -465,6 +470,10 @@ class SalesVendorApp:
         selected_item = self.vendor_tree.selection()
         if not selected_item:
             messagebox.showwarning('Error', 'Please select a vendor to delete.')
+            return
+
+        confirm = messagebox.askyesno('Confirm Delete', 'Are you sure you want to delete the selected vendor?')
+        if not confirm:
             return
 
         vendor_id = self.vendor_tree.item(selected_item)['values'][0]
