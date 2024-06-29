@@ -25,10 +25,16 @@ class SupervisorApp:
         self.cursor2 = self.connector2.cursor()
 
         self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Inventory (PRODUCT_REAL_ID INTEGER PRIMARY KEY, date DATE, PRODUCT_NAME TEXT, '
+            'CREATE TABLE IF NOT EXISTS Inventory (PRODUCT_REAL_ID INTEGER PRIMARY KEY, '
+            'date DATE, '
+            'PRODUCT_NAME TEXT, '
             'PRODUCT_ID TEXT,'
-            'STOCKS INTEGER, CATEGORY VARCHAR(30), PURCHASE_PRICE FLOAT, '
-            'SELLING_PRICE FLOAT, LOCATION VARCHAR(30), INTERNAL_REFERENCE VARCHAR(30))'
+            'STOCKS INTEGER, '
+            'CATEGORY VARCHAR(30), '
+            'PURCHASE_PRICE FLOAT, '
+            'SELLING_PRICE FLOAT,'
+            ' LOCATION VARCHAR(30), '
+            'INTERNAL_REFERENCE VARCHAR(30))'
         )
         self.connector.commit()
 
