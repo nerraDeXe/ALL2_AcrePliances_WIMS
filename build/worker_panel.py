@@ -47,7 +47,6 @@ class WorkerApp:
         customtkinter.set_appearance_mode("light")
         self.custom_style = ttk.Style()
         self.custom_style.configure('Bold.TButton', font=('Helvetica', 12, 'bold'), background="black")
-
         self.list_all_inventory()
 
     def setup_variables(self):
@@ -63,6 +62,8 @@ class WorkerApp:
         self.AMOUNT_TO_MOVE = IntVar()
         self.NEW_LOCATION = StringVar()
 
+
+# setup every frames
     def setup_frames(self):
         self.dashboard_frame = Frame(self.root, bg='#C21A2F')
         self.dashboard_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.20)
@@ -117,6 +118,10 @@ class WorkerApp:
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.65)
         self.show_bar_chart()
 
+        # self.notification_frame = Frame(self.root)
+        # self.notification_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.65)
+        # self.notification_frame.place_forget()
+
     def setup_widgets(self):
         self.setup_data_entry_widgets()
         self.setup_move_product_widgets()
@@ -130,6 +135,7 @@ class WorkerApp:
         self.setup_tasks2_entry_widgets()
         self.setup_tasks2_table()
         # self.load_dashboard_image()
+        # self.setup_notification_frame()
 
     def setup_data_entry_widgets(self):
         # Setup Data Entry Widgets
@@ -258,6 +264,8 @@ class WorkerApp:
                   font=('Microsoft YaHei UI Light', 16), corner_radius=15, hover_color='orange'
                   ).place(x=160, y=500, anchor=W)
 
+
+
     def setup_tasks2_button_widgets(self):
         ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20,
                    style='Bold.TButton',
@@ -382,6 +390,7 @@ class WorkerApp:
         self.task_assignment_frame.place_forget()
         self.task_assignment_frame2.place_forget()
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
+        self.notification_frame()
         self.show_bar_chart()
 
     # Inventory Management Functions
