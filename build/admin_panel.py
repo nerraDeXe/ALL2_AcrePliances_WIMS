@@ -70,62 +70,66 @@ class AdminApp:
         self.NEW_LOCATION = StringVar()
 
     def setup_frames(self):
-        self.dashboard_frame = Frame(self.root, bg='#C21A2F')
+        self.dashboard_frame = CTkFrame(self.root, fg_color='#C21A2F', corner_radius=10)
         self.dashboard_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.20)
 
-        self.button_frame = Frame(self.root, bg='#9C0014')
+        self.button_frame = CTkFrame(self.root, fg_color='#9C0014', corner_radius=10)
         self.button_frame.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
 
-        self.button_frame_inventory = Frame(self.root, bg='#9C0014')
+        self.button_frame_inventory = CTkFrame(self.root, fg_color='#9C0014', corner_radius=10)
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.15, relwidth=0.22)
         self.button_frame_inventory.place_forget()
 
-        self.button_frame_users = Frame(self.root, bg='#9C0014')
+        self.button_frame_users = CTkFrame(self.root, fg_color='#9C0014', corner_radius=10)
         self.button_frame_users.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
         self.button_frame_users.place_forget()
 
-        self.button_frame_tasks = Frame(self.root, bg='#9C0014')
+        self.button_frame_tasks = CTkFrame(self.root, fg_color='#9C0014', corner_radius=10)
         self.button_frame_tasks.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
         self.button_frame_tasks.place_forget()
 
-        self.button_frame_tasks2 = Frame(self.root)
+        self.button_frame_tasks2 = CTkFrame(self.root, corner_radius=10)
         self.button_frame_tasks2.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
         self.button_frame_tasks2.place_forget()
 
-        self.table_frame = Frame(self.root)
+        self.table_frame = CTkFrame(self.root, corner_radius=10)
         self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.table_frame.place_forget()
 
-        self.table_frame2 = Frame(self.root)
+        self.table_frame2 = CTkFrame(self.root, corner_radius=10)
         self.table_frame2.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.table_frame2.place_forget()
 
-        self.table_frame3 = Frame(self.root)
+        self.table_frame3 = CTkFrame(self.root, corner_radius=10)
         self.table_frame3.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.table_frame3.place_forget()
 
-        self.table_frame4 = Frame(self.root)
+        self.table_frame4 = CTkFrame(self.root, corner_radius=10)
         self.table_frame4.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.table_frame4.place_forget()
 
-        self.data_entry_frame = Frame(self.root)
+        self.data_entry_frame = CTkFrame(self.root, corner_radius=10)
         self.data_entry_frame.pack()
         self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.30)
         self.data_entry_frame.place_forget()
 
-        self.task_assignment_frame = Frame(self.root)
+        self.task_assignment_frame =CTkFrame(self.root, corner_radius=10)
         self.task_assignment_frame.pack()
         self.task_assignment_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.task_assignment_frame.place_forget()
 
-        self.task_assignment_frame2 = Frame(self.root)
+        self.task_assignment_frame2 = CTkFrame(self.root, corner_radius=10)
         self.task_assignment_frame2.pack()
         self.task_assignment_frame2.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.task_assignment_frame2.place_forget()
 
-        self.chart_frame = Frame(self.root)
+        self.chart_frame = CTkFrame(self.root, corner_radius=10)
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.65)
         self.show_bar_chart()
+
+        self.detail_frame = CTkFrame(self.root, corner_radius=10)
+        self.detail_frame.pack()
+        self.detail_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.30)
 
     def setup_widgets(self):
         self.setup_data_entry_widgets()
@@ -462,6 +466,8 @@ class AdminApp:
         # self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.chart_frame.place_forget()
         self.hide_move_product_widgets()
+        self.detail_frame.place_forget()
+
 
     def close_subpanel(self):
         self.button_frame_users.place_forget()
@@ -477,7 +483,10 @@ class AdminApp:
         self.task_assignment_frame.place_forget()
         self.task_assignment_frame2.place_forget()
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
+        self.detail_frame.pack()
+        self.detail_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.30)
         self.show_bar_chart()
+        self.display_product_info()
 
     def open_purchase_order(self):
         subprocess.run(["python", "Purchase order.py", username])
@@ -780,7 +789,7 @@ class AdminApp:
             self.list_all_inventory()
             self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
             self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-            self.add_btn.place_forget()
+            # self.add_btn.place_forget()
             # self.add_btn1.place_forget()
             # self.add_btn2.place_forget()
             # self.add_btn3.place_forget()
@@ -857,6 +866,8 @@ class AdminApp:
         self.chart_frame.place_forget()
         self.button_frame_users.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.table_frame2.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
+        self.detail_frame.place_forget()
+
 
     def load_users(self):
         self.user_table.delete(*self.user_table.get_children())
@@ -1064,6 +1075,61 @@ class AdminApp:
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=BOTH, expand=1)
+
+    def display_product_info(self):
+        # Query to get the total products count
+        total_products_query = 'SELECT COUNT(*) FROM Inventory'
+        total_products = self.connector.execute(total_products_query).fetchone()[0]
+
+        # Query to get products with stocks below 20
+        low_stock_query = 'SELECT PRODUCT_NAME, STOCKS FROM Inventory WHERE STOCKS < 20'
+        low_stock_products = self.connector.execute(low_stock_query).fetchall()
+
+        # Clear the detail_frame
+        for widget in self.detail_frame.winfo_children():
+            widget.destroy()
+
+        # Add a canvas to handle scrollable content
+        canvas = Canvas(self.detail_frame, bg="white", highlightthickness=0)
+        canvas.pack(side="left", fill="both", expand=True)
+
+        # Add a scrollbar
+        scrollbar = CTkScrollbar(self.detail_frame, orientation="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Add an inner frame within the canvas
+        inner_frame = CTkFrame(canvas, fg_color="#f5f5f5")
+        canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+
+        # Add a frame for total products
+        total_frame = CTkFrame(inner_frame, fg_color="#e6f7ff", border_width=2, border_color="#007acc")
+        total_frame.pack(fill="both", padx=20, pady=10)
+
+        total_label = CTkLabel(total_frame, text=f"Total Products: {total_products}", font=("Arial", 18, "bold"),
+                                   pady=10, text_color="#007acc")
+        total_label.pack(padx=10, pady=10)
+
+        # Add a frame for low stock products
+        low_stock_frame = CTkFrame(inner_frame, fg_color="#fff0f0", border_width=2, border_color="#cc0000")
+        low_stock_frame.pack(fill="both", padx=20, pady=10, expand=True)
+
+        low_stock_label = CTkLabel(low_stock_frame, text="Products with Low Stock (Below 20):",
+                                       font=("Arial", 18, "bold"), pady=10, text_color="#cc0000")
+        low_stock_label.pack(padx=10, pady=10)
+
+        if low_stock_products:
+            for product in low_stock_products:
+                product_label = CTkLabel(low_stock_frame, text=f"{product[0]} - {product[1]} items left",
+                                             font=("Arial", 16), text_color="#cc0000")
+                product_label.pack(anchor="w", padx=20, pady=5)
+        else:
+            no_low_stock_label = CTkLabel(low_stock_frame, text="No products with low stock.", font=("Arial", 16))
+            no_low_stock_label.pack(anchor="w", padx=20, pady=5)
+
+        # Update the scroll region of the canvas
+        inner_frame.update_idletasks()
+        canvas.config(scrollregion=canvas.bbox("all"))
 
     def restart_login_page(self):
         root.quit()
