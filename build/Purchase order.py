@@ -3,10 +3,12 @@ import tkinter as tk
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 import sqlite3
-from datetime import date
+from datetime import datetime, date
+from PIL import Image, ImageTk
+import pytz
 
 
-class SalesVendorApp:
+class PurchaseApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect('AcrePliances.db')
         self.cursor = self.connector.cursor()
@@ -39,17 +41,26 @@ class SalesVendorApp:
             'LOCATION VARCHAR(30), '
             'INTERNAL_REFERENCE VARCHAR(30))'
         )
+
+        self.connector.execute(
+            'CREATE TABLE IF NOT EXISTS Notifications ('
+            'NOTIFICATION_ID INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'DESCRIPTION TEXT, '
+            'TIMESTAMP DATETIME DEFAULT CURRENT_TIMESTAMP)'
+        )
+
         self.acre_connector.commit()
 
         self.root = root
         self.username = username
-        self.root.title('Sales and Vendor Management')
+        self.root.title('Purchase Order Management')
         self.root.geometry('1280x850')
         self.root.configure(bg='#BF2C37')
+        self.root.resizable(0, 0)
 
         self.create_widgets()
         self.load_order_data()
-        self.load_vendor_data()
+        self.load_vendors_data()
 
     def create_widgets(self):
         top_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
@@ -63,12 +74,20 @@ class SalesVendorApp:
                                      text_color='white')
         welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
 
+        # Add notification button
+        self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
+
+        # Create the image button
+        self.notification_button = tk.Button(top_frame, image=self.notification_image, bg='white',
+                                             activebackground='darkred', command=self.show_notifications_window)
+        self.notification_button.pack(side=tk.RIGHT, padx=20, pady=20)
+
         left_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=20)
 
         self.add_purchase_order_button = ctk.CTkButton(left_frame, text="ADD PURCHASE ORDER", fg_color='#FFFFFF',
                                                        text_color='#000000',
-                                                       command=self.create_purchase_order_window())
+                                                       command=self.create_purchase_order_window)
         self.add_purchase_order_button.pack(pady=10)
 
         self.edit_purchase_order_button = ctk.CTkButton(left_frame, text="EDIT PURCHASE ORDER", fg_color='#FFFFFF',
@@ -95,7 +114,8 @@ class SalesVendorApp:
         self.vendor_frame = ctk.CTkFrame(main_frame, fg_color='white')
         self.vendor_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        order_details_label = ctk.CTkLabel(self.order_frame, text="Purchase Order Details:", font=("Helvetica", 20, 'bold'),
+        order_details_label = ctk.CTkLabel(self.order_frame, text="Purchase Order Details:",
+                                           font=("Helvetica", 20, 'bold'),
                                            text_color='black')
         order_details_label.pack(anchor=tk.W, pady=10)
 
@@ -137,10 +157,11 @@ class SalesVendorApp:
 
     def create_purchase_order_window(self):
         self.extra_window = ctk.CTkToplevel(self.root)
-        self.extra_window.title('Add Sales Order')
+        self.extra_window.title('Add Purchase Order')
         self.extra_window.geometry('600x600')
-        title_label = ctk.CTkLabel(self.extra_window, text="ADD NEW SALES ORDER", font=("Helvetica", 20, 'bold'))
+        title_label = ctk.CTkLabel(self.extra_window, text="ADD NEW PURCHASE ORDER", font=("Helvetica", 20, 'bold'))
         title_label.pack(pady=20)
+        self.extra_window.attributes('-topmost', True)
 
         # Product Name
         name_frame = ctk.CTkFrame(self.extra_window)
@@ -174,145 +195,189 @@ class SalesVendorApp:
         vendor_id_frame.pack(pady=5, padx=10, fill=tk.X)
         vendor_id_label = ctk.CTkLabel(vendor_id_frame, text="Vendor ID:")
         vendor_id_label.pack(side=tk.LEFT)
-        self.vendor_id_var = tk.StringVar()
-        self.vendor_id_menu = ttk.Combobox(vendor_id_frame, textvariable=self.vendor_id_var)
-        self.vendor_id_menu.pack(side=tk.RIGHT, fill=tk.X, expand=True)
-        self.load_vendor_ids()
+        self.vendor_id_entry = ctk.CTkEntry(vendor_id_frame)
+        self.vendor_id_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        add_button = ctk.CTkButton(self.extra_window, text="Add Order", command=self.add_order)
-        add_button.pack(pady=10)
+        # Product ID
+        product_id_frame = ctk.CTkFrame(self.extra_window)
+        product_id_frame.pack(pady=5, padx=10, fill=tk.X)
+        product_id_label = ctk.CTkLabel(product_id_frame, text="Product ID:")
+        product_id_label.pack(side=tk.LEFT)
+        self.product_id_entry = ctk.CTkEntry(product_id_frame)
+        self.product_id_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        clear_button = ctk.CTkButton(self.extra_window, text="Clear", command=self.clear_order_entries)
-        clear_button.pack(pady=10)
+        add_button = ctk.CTkButton(self.extra_window, text="Add Purchase Order", command=self.add_purchase_order)
+        add_button.pack(pady=20)
 
-    def load_vendor_ids(self):
-        self.cursor.execute('SELECT VENDOR_ID FROM Vendors')
-        vendor_ids = [row[0] for row in self.cursor.fetchall()]
-        self.vendor_id_menu['values'] = vendor_ids
+    #################################### Purchase Order into database function #############################################
+    def load_order_data(self):
+        self.order_tree.delete(*self.order_tree.get_children())
 
-    def add_order(self):
-        product_name = self.name_entry.get()
+        self.cursor.execute('SELECT * FROM Orders')
+        rows = self.cursor.fetchall()
+
+        for row in rows:
+            self.order_tree.insert('', 'end', values=row)
+
+    def add_purchase_order(self):
+        name = self.name_entry.get()
+        product_id = self.product_id_entry.get()
         category = self.category_var.get()
         quantity = self.quantity_entry.get()
-        vendor_id = self.vendor_id_var.get()
+        vendor_id = self.vendor_id_entry.get()
 
-        if product_name and category and quantity and vendor_id:
-            product_id = self.generate_product_id(category)
-            self.cursor.execute(
-                'INSERT INTO Orders (PRODUCT_NAME, PRODUCT_ID, CATEGORY, QUANTITY, VENDOR_ID) VALUES (?, ?, ?, ?, ?)',
-                (product_name, product_id, category, quantity, vendor_id)
-            )
-            self.connector.commit()
-            self.load_order_data()
-            messagebox.showinfo('Success', 'Order added successfully!')
-            self.extra_window.destroy()
-        else:
-            messagebox.showwarning('Error', 'Please fill in all fields.')
+        self.cursor.execute(
+            'INSERT INTO Orders (PRODUCT_NAME, PRODUCT_ID, CATEGORY, QUANTITY, VENDOR_ID) VALUES (?, ?, ?, ?, ?)',
+            (name, product_id, category, quantity, vendor_id))
+        self.connector.commit()
 
-    def generate_product_id(self, category):
-        self.cursor.execute('SELECT COUNT(*) FROM Orders WHERE CATEGORY=?', (category,))
-        count = self.cursor.fetchone()[0]
-        product_id = f"{category[0].upper()}{count + 1:03d}"
-        return product_id
+        self.load_order_data()
+        self.extra_window.destroy()
+        self.add_notification(f"Added order for {name}")
+
+    def load_vendor_data(self):
+        self.vendor_tree.delete(*self.vendor_tree.get_children())
+
+        self.cursor.execute('SELECT * FROM Vendors')
+        rows = self.cursor.fetchall()
+
+        for row in rows:
+            self.vendor_tree.insert('', 'end', values=row)
 
     def edit_order_window(self):
         selected_item = self.order_tree.selection()
         if not selected_item:
-            messagebox.showwarning('Error', 'Please select an order to edit.')
+            messagebox.showerror("Error", "Please select an order to edit.")
             return
-
         order_id = self.order_tree.item(selected_item)['values'][0]
-        self.extra_window = ctk.CTkToplevel(self.root)
-        self.extra_window.title('Edit Sales Order')
-        self.extra_window.geometry('600x600')
 
-        title_label = ctk.CTkLabel(self.extra_window, text="EDIT SALES ORDER", font=("Helvetica", 20, 'bold'))
+        self.edit_window = ctk.CTkToplevel(self.root)
+        self.edit_window.title('Edit Purchase Order')
+        self.edit_window.geometry('600x600')
+        title_label = ctk.CTkLabel(self.edit_window, text="EDIT SALES ORDER", font=("Helvetica", 20, 'bold'))
         title_label.pack(pady=20)
-
-        self.cursor.execute('SELECT * FROM Orders WHERE ORDER_ID=?', (order_id,))
-        order = self.cursor.fetchone()
-
-        self.edit_order_id = order[0]
+        self.edit_window.attributes('-topmost', True)
 
         # Product Name
-        name_frame = ctk.CTkFrame(self.extra_window)
+        name_frame = ctk.CTkFrame(self.edit_window)
         name_frame.pack(pady=5, padx=10, fill=tk.X)
         name_label = ctk.CTkLabel(name_frame, text="Product Name:")
         name_label.pack(side=tk.LEFT)
-        self.name_entry = ctk.CTkEntry(name_frame)
-        self.name_entry.insert(0, order[1])
-        self.name_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.edit_name_entry = ctk.CTkEntry(name_frame)
+        self.edit_name_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Category
-        category_frame = ctk.CTkFrame(self.extra_window)
+        category_frame = ctk.CTkFrame(self.edit_window)
         category_frame.pack(pady=5, padx=10, fill=tk.X)
         category_label = ctk.CTkLabel(category_frame, text="Category:")
         category_label.pack(side=tk.LEFT)
-        self.category_var = tk.StringVar()
-        self.category_menu = ttk.Combobox(category_frame, textvariable=self.category_var,
-                                          values=["Electronics", "Appliances", "Personal Care", "Homeware",
-                                                  "Furniture"])
-        self.category_menu.set(order[3])
-        self.category_menu.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.edit_category_var = tk.StringVar()
+        self.edit_category_menu = ttk.Combobox(category_frame, textvariable=self.edit_category_var,
+                                               values=["Electronics", "Appliances", "Personal Care", "Homeware",
+                                                       "Furniture"])
+        self.edit_category_menu.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Quantity
-        quantity_frame = ctk.CTkFrame(self.extra_window)
+        quantity_frame = ctk.CTkFrame(self.edit_window)
         quantity_frame.pack(pady=5, padx=10, fill=tk.X)
         quantity_label = ctk.CTkLabel(quantity_frame, text="Quantity:")
         quantity_label.pack(side=tk.LEFT)
-        self.quantity_entry = ctk.CTkEntry(quantity_frame)
-        self.quantity_entry.insert(0, order[4])
-        self.quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.edit_quantity_entry = ctk.CTkEntry(quantity_frame)
+        self.edit_quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Vendor ID
-        vendor_id_frame = ctk.CTkFrame(self.extra_window)
+        vendor_id_frame = ctk.CTkFrame(self.edit_window)
         vendor_id_frame.pack(pady=5, padx=10, fill=tk.X)
         vendor_id_label = ctk.CTkLabel(vendor_id_frame, text="Vendor ID:")
         vendor_id_label.pack(side=tk.LEFT)
-        self.vendor_id_var = tk.StringVar()
-        self.vendor_id_menu = ttk.Combobox(vendor_id_frame, textvariable=self.vendor_id_var)
-        self.vendor_id_menu.pack(side=tk.RIGHT, fill=tk.X, expand=True)
-        self.load_vendor_ids()
-        self.vendor_id_menu.set(order[5])
+        self.edit_vendor_id_entry = ctk.CTkEntry(vendor_id_frame)
+        self.edit_vendor_id_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        save_button = ctk.CTkButton(self.extra_window, text="Save Changes", command=self.save_order_changes)
-        save_button.pack(pady=10)
+        # Product ID
+        product_id_frame = ctk.CTkFrame(self.edit_window)
+        product_id_frame.pack(pady=5, padx=10, fill=tk.X)
+        product_id_label = ctk.CTkLabel(product_id_frame, text="Product ID:")
+        product_id_label.pack(side=tk.LEFT)
+        self.edit_product_id_entry = ctk.CTkEntry(product_id_frame)
+        self.edit_product_id_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-    def save_order_changes(self):
-        product_name = self.name_entry.get()
-        category = self.category_var.get()
-        quantity = self.quantity_entry.get()
-        vendor_id = self.vendor_id_var.get()
+        # Submit button
+        submit_button = ctk.CTkButton(self.edit_window, text="Update Order",
+                                      command=lambda: self.update_order(order_id))
+        submit_button.pack(pady=20)
 
-        if product_name and category and quantity and vendor_id:
-            self.cursor.execute(
-                'UPDATE Orders SET PRODUCT_NAME=?, CATEGORY=?, QUANTITY=?, VENDOR_ID=? WHERE ORDER_ID=?',
-                (product_name, category, quantity, vendor_id, self.edit_order_id)
-            )
-            self.connector.commit()
-            self.load_order_data()
-            messagebox.showinfo('Success', 'Order updated successfully!')
-            self.extra_window.destroy()
-        else:
-            messagebox.showwarning('Error', 'Please fill in all fields.')
+        self.cursor.execute('SELECT * FROM Orders WHERE ORDER_ID = ?', (order_id,))
+        order = self.cursor.fetchone()
+
+        self.edit_name_entry.insert(0, order[1])
+        self.edit_product_id_entry.insert(0, order[2])
+        self.edit_category_var.set(order[3])
+        self.edit_quantity_entry.insert(0, order[4])
+        self.edit_vendor_id_entry.insert(0, order[5])
+
+    def update_order(self, order_id):
+        name = self.edit_name_entry.get()
+        product_id = self.edit_product_id_entry.get()
+        category = self.edit_category_var.get()
+        quantity = self.edit_quantity_entry.get()
+        vendor_id = self.edit_vendor_id_entry.get()
+
+        self.cursor.execute('''
+        UPDATE Orders SET PRODUCT_NAME = ?, PRODUCT_ID = ?, CATEGORY = ?, QUANTITY = ?, VENDOR_ID = ?
+        WHERE ORDER_ID = ?
+        ''', (name, product_id, category, quantity, vendor_id, order_id))
+        self.connector.commit()
+
+        self.load_order_data()
+        self.edit_window.destroy()
+        self.add_notification(f"Updated order ID {order_id} for {name}")
 
     def delete_order(self):
         selected_item = self.order_tree.selection()
         if not selected_item:
-            messagebox.showwarning('Error', 'Please select an order to delete.')
-            return
-
-        confirm = messagebox.askyesno('Confirm Delete', 'Are you sure you want to delete the selected order?')
-        if not confirm:
+            messagebox.showerror("Error", "Please select an order to delete.")
             return
 
         order_id = self.order_tree.item(selected_item)['values'][0]
-        self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID=?', (order_id,))
-        self.connector.commit()
-        self.load_order_data()
-        messagebox.showinfo('Success', 'Order deleted successfully!')
 
-    def load_vendor_data(self):
+        # Ask for confirmation
+        confirm = messagebox.askokcancel("Confirm Deletion", f"Are you sure you want to delete order ID {order_id}?")
+
+        if confirm:
+            self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID = ?', (order_id,))
+            self.connector.commit()
+
+            self.load_order_data()
+            self.add_notification(f"Deleted order ID {order_id}")
+
+################################## Complete Order functions into database ##############################################
+    def complete_order(self, order):
+        product_id = order[2]
+        name = order[1]
+        category = order[3]
+        quantity = order[4]
+        location = self.location_entry.get()
+        purchase_price = self.purchase_price_entry.get()
+        selling_price = self.selling_price_entry.get()
+        internal_reference = self.internal_reference_entry.get()
+        current_date = date.today().strftime("%Y-%m-%d")
+
+        self.acre_cursor.execute('''
+        INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (current_date, name, product_id, quantity, category, purchase_price, selling_price, location,
+              internal_reference))
+        self.acre_connector.commit()
+
+        self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID = ?', (order[0],))
+        self.connector.commit()
+
+        self.load_order_data()
+        self.complete_window.destroy()
+        self.add_notification(f"Completed order for {name}")
+
+    ########################## Display vendor's data #######################################################################
+    def load_vendors_data(self):
         self.vendor_tree.delete(*self.vendor_tree.get_children())
 
         self.cursor.execute('SELECT * FROM Vendors')
@@ -327,6 +392,7 @@ class SalesVendorApp:
         self.quantity_entry.delete(0, tk.END)
         self.vendor_id_menu.set('')
 
+    ######################################## COMPLETE ORDER FUNCTION ###################################################
     def complete_order_window(self):
         selected_item = self.order_tree.selection()
         if not selected_item:
@@ -399,23 +465,119 @@ class SalesVendorApp:
         location_prefix = 'REC'
         internal_reference = f"WH-{location_prefix}-{product_id}"
 
-        self.acre_cursor.execute(
-            'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, '
-            'LOCATION, INTERNAL_REFERENCE)'
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            (date, product_name, product_id, quantity, category, purchase_price, selling_price, location,
-             internal_reference)
-        )
-        self.acre_connector.commit()
+        # Insert into Inventory table
+        try:
+            self.acre_cursor.execute(
+                'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, '
+                'LOCATION, INTERNAL_REFERENCE) '
+                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (date, product_name, product_id, quantity, category, purchase_price, selling_price, location,
+                 internal_reference)
+            )
+            self.acre_connector.commit()
 
-        self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID=?', (order_id,))
+            # Delete from Orders table
+            self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID=?', (order_id,))
+            self.connector.commit()
+
+            # Load order data (if this updates UI or data elsewhere)
+            self.load_order_data()
+
+            # Show success message
+            messagebox.showinfo('Success', 'Order completed and transferred successfully!')
+
+            # Close extra window if needed
+            self.extra_window.destroy()
+
+            # Add notification
+            notification_description = f"Order for {product_name} (ID: {order_id}) completed and transferred to {location}."
+            self.add_notification(notification_description)
+
+        except sqlite3.Error as e:
+            messagebox.showerror('Error', f'Error completing order: {str(e)}')
+
+    ########################NOTIFICAITON FUNCTIONS######################################################################
+
+    def add_notification(self, description):
+        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION) VALUES (?)', (description,))
         self.connector.commit()
-        self.load_order_data()
-        messagebox.showinfo('Success', 'Order completed and transferred successfully!')
-        self.extra_window.destroy()
+        self.load_notifications()
+
+    def show_notifications_window(self):
+        notification_window = ctk.CTkToplevel(self.root)
+        notification_window.title('Notifications')
+        notification_window.geometry('500x400')
+        notification_window.resizable(0, 0)
+
+        # Set the notification window to be on top of the main root window
+        notification_window.attributes('-topmost', 'true')
+
+        notification_label = ctk.CTkLabel(notification_window, text="Notifications", font=("Helvetica", 14))
+        notification_label.pack(pady=20)
+
+        self.NOTIFICATION_LIST = tk.Listbox(notification_window)
+        self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        self.load_notifications()
+
+        delete_button = ctk.CTkButton(notification_window, text="Delete Selected",
+                                      command=self.delete_selected_notification)
+        delete_button.pack(pady=10)
+
+    def delete_selected_notification(self):
+        # Get selected indices from the notification list
+        selected_indices = self.NOTIFICATION_LIST.curselection()
+
+        # Loop through selected indices and delete the corresponding notifications
+        for index in selected_indices:
+            try:
+                # Fetch the notification ID using the index
+                notification_id = self.notification_ids[index]
+                # Execute the SQL delete command
+                self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
+                self.connector.commit()
+            except sqlite3.Error as e:
+                # Show error message if there is an issue with deletion
+                messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
+                return
+
+        # Check if any notification is selected
+        if not selected_indices:
+            messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
+            return
+
+        # Ask for confirmation before deleting the selected notification(s)
+        confirm_delete = messagebox.askyesno('Confirm Delete',
+                                             'Are you sure you want to delete the selected notification(s)?')
+        if not confirm_delete:
+            return
+
+        # Reload notifications after deletion
+        self.load_notifications()
+
+    def load_notifications(self):
+        try:
+            self.NOTIFICATION_LIST.delete(0, tk.END)  # Clear the list first
+            self.notification_ids = {}  # Dictionary to store index to ID mapping
+            self.cursor.execute("SELECT * FROM Notifications")
+            notifications = self.cursor.fetchall()
+
+            for idx, notification in enumerate(notifications):
+                timestamp = datetime.strptime(notification[2],
+                                              '%Y-%m-%d %H:%M:%S')  # Assuming the timestamp is in the third column
+                utc_timezone = pytz.utc
+                local_timezone = pytz.timezone('Asia/Singapore')  # GMT+8 timezone
+                utc_timestamp = utc_timezone.localize(timestamp)
+                local_timestamp = utc_timestamp.astimezone(local_timezone)
+                formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')  # Format the timestamp as desired
+                message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
+                self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
+                self.notification_ids[idx] = notification[0]  # Store the ID with the index as the key
+        except sqlite3.Error as e:
+            messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
 
 if __name__ == "__main__":
     root = ctk.CTk()
-    app = SalesVendorApp(root, "Admin")
+    app = PurchaseApp(root, "Admin")
     root.mainloop()
