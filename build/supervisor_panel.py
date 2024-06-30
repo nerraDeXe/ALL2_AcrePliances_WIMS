@@ -137,6 +137,9 @@ class SupervisorApp:
         self.setup_tasks2_table()
         # self.load_dashboard_image()
 
+    def open_task_assignment_panel(self):
+        subprocess.run(["python", "Task Assignment.py"])
+
     def setup_data_entry_widgets(self):
         # Setup Data Entry Widgets
         self.date_label = ttk.Label(self.data_entry_frame, text='Date (M/DD/YY):', font=('Gill Sans MT', 13))
@@ -230,7 +233,7 @@ class SupervisorApp:
                    command=self.open_inventory_panel).place(x=40, y=35, width=200, height=50)
 
         ttk.Button(self.button_frame, text='Task Assignment', width=20, style='Bold.TButton',
-                   command=self.open_task_panel).place(x=40, y=135, width=200, height=50)
+                   command=self.open_task_assignment_panel).place(x=40, y=135, width=200, height=50)
 
         ttk.Button(self.button_frame, text='Log out', command=self.restart_login_page, style='Bold.TButton',
                    width=20).place(x=20, y=630, width=100, height=30)
