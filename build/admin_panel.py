@@ -15,31 +15,61 @@ import subprocess
 import hashlib
 from PIL import Image, ImageTk
 import sys
+import numpy as np
+
 
 
 class AdminApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect("AcrePliances.db")
         self.cursor = self.connector.cursor()
-        self.connector2 = sqlite3.connect('users.db')
-        self.cursor2 = self.connector2.cursor()
 
         self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Inventory (PRODUCT_REAL_ID INTEGER PRIMARY KEY, date DATE, PRODUCT_NAME TEXT, '
-            'PRODUCT_ID TEXT,'
-            'STOCKS INTEGER, CATEGORY VARCHAR(30), PURCHASE_PRICE FLOAT, '
-            'SELLING_PRICE FLOAT, LOCATION VARCHAR(30), INTERNAL_REFERENCE VARCHAR(30))'
+            'CREATE TABLE IF NOT EXISTS Inventory ('
+            'PRODUCT_REAL_ID INTEGER PRIMARY KEY, '
+            'date DATE, '
+            'PRODUCT_NAME TEXT, '
+            'PRODUCT_ID TEXT, '
+            'STOCKS INTEGER, '
+            'CATEGORY VARCHAR(30), '
+            'PURCHASE_PRICE FLOAT, '
+            'SELLING_PRICE FLOAT, '
+            'LOCATION VARCHAR(30), '
+            'INTERNAL_REFERENCE VARCHAR(30))'
         )
-        self.connector.commit()
 
-        # self.connector.execute(
-        #     'CREATE TABLE IF NOT EXISTS Order ('
-        # )
+        self.connector.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                USER_REAL_ID INTEGER PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL CHECK(role IN ('Administrator', 'Supervisor', 'Worker'))
+            )
+        ''')
+
+        self.connector.execute('''
+            CREATE TABLE IF NOT EXISTS notifications (
+                notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                notification_description TEXT NOT NULL
+            )
+        ''')
+
+        self.connector.execute('''
+            CREATE TABLE IF NOT EXISTS Vendors (
+                VENDOR_ID INTEGER PRIMARY KEY,
+                NAME VARCHAR(20),
+                EMAIL VARCHAR(20),
+                PHONE_NUMBER VARCHAR(10),
+                COMPANY VARCHAR(20)
+            )
+        ''')
+
+        self.connector.commit()
 
         self.root = root
         self.username = username
         self.root.title('ACREPILLANCE')
-        self.root.geometry('1920x1000')
+        self.root.geometry('1600x1000')
         self.root.resizable(0, 0)
 
         self.setup_variables()
@@ -54,6 +84,8 @@ class AdminApp:
 
         self.list_all_inventory()
         self.load_users()
+        self.load_order_data()
+        self.load_vendor_data()
         self.original_items = {}
 
     def setup_variables(self):
@@ -68,68 +100,70 @@ class AdminApp:
         self.INTERNAL_REFERENCE = StringVar()
         self.AMOUNT_TO_MOVE = IntVar()
         self.NEW_LOCATION = StringVar()
+        self.NOTIFICATION_LIST = StringVar()
 
     def setup_frames(self):
-        self.dashboard_frame = CTkFrame(self.root, fg_color='#C21A2F', corner_radius=10)
-        self.dashboard_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.20)
+        self.dashboard1_frame = CTkFrame(self.root, bg_color='grey', border_color='white', fg_color='#9C0014')
+        self.dashboard1_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.20)
 
-        self.button_frame = CTkFrame(self.root, fg_color='#9C0014', corner_radius=10)
+        self.button_frame = CTkFrame(self.root, bg_color='#9C0014', border_color='white', fg_color='#9C0014')
         self.button_frame.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
 
-        self.button_frame_inventory = CTkFrame(self.root, fg_color='#9C0014', corner_radius=10)
+        self.button_frame_inventory = CTkFrame(self.root, bg_color='#9C0014', border_color='white', fg_color='#9C0014')
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.15, relwidth=0.22)
         self.button_frame_inventory.place_forget()
 
-        self.button_frame_users = CTkFrame(self.root, fg_color='#9C0014', corner_radius=10)
+        self.button_frame_users = CTkFrame(self.root, bg_color='#9C0014', border_color='white', fg_color='#9C0014')
         self.button_frame_users.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
         self.button_frame_users.place_forget()
 
-        self.button_frame_tasks = CTkFrame(self.root, fg_color='#9C0014', corner_radius=10)
-        self.button_frame_tasks.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.button_frame_tasks.place_forget()
+        self.button_frame_purchase = CTkFrame(self.root, bg_color='#9C0014', border_color='white', fg_color='#9C0014')
+        self.button_frame_purchase.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
+        self.button_frame_purchase.place_forget()
 
-        self.button_frame_tasks2 = CTkFrame(self.root, corner_radius=10)
-        self.button_frame_tasks2.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.button_frame_tasks2.place_forget()
-
-        self.table_frame = CTkFrame(self.root, corner_radius=10)
+        self.table_frame = CTkFrame(self.root, border_color='white', fg_color='#9C0014')
         self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.table_frame.place_forget()
 
-        self.table_frame2 = CTkFrame(self.root, corner_radius=10)
+        self.table_frame2 = CTkFrame(self.root, border_color='white', fg_color='#9C0014')
         self.table_frame2.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.table_frame2.place_forget()
 
-        self.table_frame3 = CTkFrame(self.root, corner_radius=10)
+        self.table_frame3 = CTkFrame(self.root, border_color='white', fg_color='#9C0014')
         self.table_frame3.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.table_frame3.place_forget()
 
-        self.table_frame4 = CTkFrame(self.root, corner_radius=10)
+        self.table_frame4 = CTkFrame(self.root, border_color='white', fg_color='#9C0014')
         self.table_frame4.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.table_frame4.place_forget()
 
-        self.data_entry_frame = CTkFrame(self.root, corner_radius=10)
-        self.data_entry_frame.pack()
+        self.table_frame5 = CTkFrame(self.root, border_color='white', fg_color='orange')
+        self.table_frame5.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.30)
+        self.table_frame5.place_forget()
+
+        self.table_frame6 = CTkFrame(self.root, border_color='white', fg_color='orange')
+        self.table_frame6.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.30)
+        self.table_frame6.place_forget()
+
+        self.data_entry_frame = CTkFrame(self.root, border_color='white', fg_color='#9C0014')
         self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.30)
         self.data_entry_frame.place_forget()
 
-        self.task_assignment_frame =CTkFrame(self.root, corner_radius=10)
-        self.task_assignment_frame.pack()
+        self.task_assignment_frame = CTkFrame(self.root, border_color='white', fg_color='#9C0014')
         self.task_assignment_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.task_assignment_frame.place_forget()
 
-        self.task_assignment_frame2 = CTkFrame(self.root, corner_radius=10)
-        self.task_assignment_frame2.pack()
+        self.task_assignment_frame2 = CTkFrame(self.root, border_color='white', fg_color='#9C0014')
         self.task_assignment_frame2.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.task_assignment_frame2.place_forget()
 
-        self.chart_frame = CTkFrame(self.root, corner_radius=10)
-        self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.65)
-        self.show_bar_chart()
+        self.purchase_order_frame = CTkFrame(self.root, border_color='white', fg_color='orange')
+        self.purchase_order_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
+        self.purchase_order_frame.place_forget()
 
-        self.detail_frame = CTkFrame(self.root, corner_radius=10)
-        self.detail_frame.pack()
-        self.detail_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.30)
+        self.chart_frame = CTkFrame(self.root, border_color='white', fg_color='orange')
+        self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.80)
+        self.show_dashboard()
 
     def setup_widgets(self):
         self.setup_data_entry_widgets()
@@ -139,42 +173,12 @@ class AdminApp:
         self.setup_table()
         self.setup_user_management_widgets()
         self.setup_user_table()
-        self.setup_tasks_button_widgets()
-        self.setup_tasks_entry_widgets()
-        self.setup_tasks_table()
-        self.setup_tasks2_button_widgets()
-        self.setup_tasks2_entry_widgets()
-        self.setup_tasks2_table()
-        # self.load_dashboard_image()
+        self.setup_purchase_order_buttons()
+        self.setup_purchase_order_table()
 
-        # def load_dashboard_image(self):
-        #     # Load the image
-        #     image_path = "C:/Users/LIM TZE TA/PycharmProjects/project2/build/assets/frame0/default-monochrome1.png"
-        #     original_image = Image.open(image_path).convert("RGBA")
-        #
-        #     background_color = (194, 26, 47, 255)
-        #
-        #     data = original_image.getdata()
-        #     new_data = []
-        #     for item in data:
-        #         # Change all white (also check alpha as white has alpha 255)
-        #         if item[0] == 255 and item[1] == 255 and item[2] == 255 and item[3] == 255:
-        #             new_data.append(background_color)
-        #         else:
-        #             new_data.append(item)
-        #
-        #     original_image.putdata(new_data)
-
-        # Resize image to fit in the dashboard frame
-        # resized_image = original_image.resize((285, 45))  # Adjust size as needed
-        # self.dashboard_image = ImageTk.PhotoImage(resized_image)
-        #
-        # # Create and place the label
-        # self.image_label = Label(self.dashboard_frame, image=self.dashboard_image, bg='#C21A2F')
-        # self.image_label.place(relx=0.5, rely=0.5, anchor='center')
-        #
-        self.username_label = Label(self.root, text=f"Welcome, {self.username}", font=("Microsoft YaHei UI Light", 15),
-                                    bg="#C21A2F", fg='white')
+        self.username_label = Label(self.dashboard1_frame, text=f"Welcome, {self.username}",
+                                    font=("Microsoft YaHei UI Light", 15),
+                                    bg="#9C0014", fg='white')
         self.username_label.place(x=50, y=50)
 
     def setup_data_entry_widgets(self):
@@ -235,6 +239,7 @@ class AdminApp:
             self.purchase.place_forget()
             self.selling_label.place_forget()
             self.selling.place_forget()
+            self.NOTIFICATION_LIST_forget()
 
         # Make the hide function available
         self.hide_data_entry_widgets = hide
@@ -267,88 +272,96 @@ class AdminApp:
         CTkButton(self.button_frame, text='User Management', command=self.open_user_management_panel, width=275,
                   height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
                   font=('Microsoft YaHei UI Light', 22),
-                  corner_radius=15, hover_color='orange').place(x=75, y=70, anchor=W)
+                  corner_radius=15, hover_color='orange').place(x=40, y=70, anchor=W)
 
         CTkButton(self.button_frame, text='Inventory Management', command=self.open_inventory_panel,
                   width=275, height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
                   font=('Microsoft YaHei UI Light', 22),
-                  corner_radius=15, hover_color='orange').place(x=75, y=180, anchor=W)
+                  corner_radius=15, hover_color='orange').place(x=40, y=180, anchor=W)
 
-        CTkButton(self.button_frame, text='Purchase Order', command=self.open_purchase_order, width=275,
+        CTkButton(self.button_frame, text='Purchase Order', command=self.open_purchase_order_panel, width=275,
                   height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
                   font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
-                  ).place(x=75, y=290, anchor=W)
+                  ).place(x=40, y=290, anchor=W)
 
-        ttk.Button(self.button_frame, text='Log out', command=self.restart_login_page, style='Bold.TButton',
-                   width=20).place(x=20, y=630, width=100, height=30)
+        CTkButton(self.button_frame, text='Sales Order', width=275,
+                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=40, y=400, anchor=W)
+
+        # CTkButton(self.button_frame, text='Vendor Details', command=self.open_vendor_details_panel, width=275,
+        #           height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+        #           font=('Microsoft YaHei UI Light', 22),
+        #           corner_radius=15, hover_color='orange').place(x=40, y=510, anchor=W)
+
+        CTkButton(self.button_frame, text='Log out', command=self.restart_login_page,
+                  height=30, width=20, border_width=0, fg_color='white', border_color='black',
+                  text_color='black').place(x=20, y=630)
 
     def setup_inventory_button_widgets(self):
 
         CTkButton(self.button_frame_inventory, text='Delete Inventory', command=self.remove_inventory, width=275,
                   height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
                   font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
-                  ).place(x=75, y=180, anchor=W)
+                  ).place(x=40, y=100, anchor=W)
 
         CTkButton(self.button_frame_inventory, text='Edit Selected Product', command=self.edit_product_details,
                   width=275, height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
                   font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
-                  ).place(x=75, y=290, anchor=W)
+                  ).place(x=40, y=250, anchor=W)
 
         CTkButton(self.button_frame_inventory, text='Move Product Location', command=self.move_product_location,
                   width=275, height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
                   font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
-                  ).place(x=75, y=400, anchor=W)
+                  ).place(x=40, y=400, anchor=W)
 
         CTkButton(self.button_frame_inventory, text='Back', command=self.close_subpanel, width=90, height=45,
                   border_width=0, fg_color='red', border_color='black', text_color='white',
                   font=('Microsoft YaHei UI Light', 16), corner_radius=15, hover_color='orange'
-                  ).place(x=160, y=500, anchor=W)
+                  ).place(x=20, y=700, anchor=W)
 
     def setup_user_management_widgets(self):
-        ttk.Button(self.button_frame_users, text='Add User', command=self.add_user, width=20, style='Bold.TButton',
-                   ).place(x=40, y=35, width=200, height=50)
+        CTkButton(self.button_frame_users, text='Add User', command=self.add_user, width=275, height=80,
+                  border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=40, y=100)
 
-        ttk.Button(self.button_frame_users, text='Delete User', width=20, style='Bold.TButton',
-                   command=self.delete_user).place(x=40, y=135, width=200, height=50)
+        CTkButton(self.button_frame_users, text='Delete User', command=self.delete_user, width=275, height=80,
+                  border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22),
+                  corner_radius=15, hover_color='orange').place(x=40, y=280)
 
-        ttk.Button(self.button_frame_users, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=335, width=60, height=30)
+        CTkButton(self.button_frame_users, text='Back', command=self.close_subpanel, width=90, height=45,
+                  border_width=0, fg_color='red', border_color='black', text_color='white',
+                  font=('Microsoft YaHei UI Light', 16),
+                  corner_radius=15, hover_color='orange').place(x=20, y=700)
 
-    def setup_tasks_button_widgets(self):
-        ttk.Button(self.button_frame_tasks, text='Assign Task', command=self.assign_task, width=20,
-                   style='Bold.TButton',
-                   ).place(x=40, y=35, width=200, height=50)
-        ttk.Button(self.button_frame_tasks, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=630, width=60, height=30)
+    def setup_purchase_order_buttons(self):
+        CTkButton(self.button_frame_purchase, text='Add Purchase Order', command=self.create_purchase_order_window, width=275,
+                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22),
+                  corner_radius=15, hover_color='orange').place(x=40, y=70, anchor=W)
 
-    def setup_tasks_entry_widgets(self):
+        CTkButton(self.button_frame_purchase, text='Edit Purchase Order', command=self.edit_order_window,
+                  width=275, height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22),
+                  corner_radius=15, hover_color='orange').place(x=40, y=180, anchor=W)
 
-        self.task_entry_label = ttk.Label(self.task_assignment_frame, text='Task:', font=('Gill Sans MT', 13))
-        self.task_entry_label.place(x=130, y=30)
-        self.task_entry = ttk.Entry(self.task_assignment_frame, font=('Gill Sans MT', 13), width=20)
-        self.task_entry.place(x=300, y=30)
+        CTkButton(self.button_frame_purchase, text='Delete Purchase Order', command=self.delete_order, width=275,
+                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=40, y=290, anchor=W)
 
-        self.worker_label = ttk.Label(self.task_assignment_frame, text='Assign to Worker:', font=('Gill Sans MT', 13))
-        self.worker_label.place(x=130, y=80)
-        self.worker_entry = ttk.Entry(self.task_assignment_frame, font=('Gill Sans MT', 13), width=20)
-        self.worker_entry.place(x=300, y=80)
+        CTkButton(self.button_frame_purchase, text='Complete Order', command=self.complete_order_window, width=275,
+                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
+                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
+                  ).place(x=40, y=400, anchor=W)
 
-        self.assign_button = ttk.Button(self.task_assignment_frame, text='Assign', command=self.assign_task,
-                                        style='Bold.TButton', width=20).place(x=300, y=130, width=160, height=50)
+        CTkButton(self.button_frame_purchase, text='Back', command=self.close_subpanel, width=90, height=45,
+                  border_width=0, fg_color='red', border_color='black', text_color='white',
+                  font=('Microsoft YaHei UI Light', 16), corner_radius=15, hover_color='orange'
+                  ).place(x=20, y=700, anchor=W)
 
-    def setup_tasks2_button_widgets(self):
-        ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20,
-                   style='Bold.TButton',
-                   ).place(x=40, y=35, width=200, height=50)
-        ttk.Button(self.button_frame_tasks2, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=630, width=60, height=30)
-
-    def setup_tasks2_entry_widgets(self):
-
-        self.status_var = StringVar()
-        self.status_menu = ttk.Combobox(self.task_assignment_frame2, textvariable=self.status_var, state='readonly',
-                                        values=["Incomplete", "In Progress", "Blocked", "Complete"])
-        self.status_menu.place(x=130, y=80)
 
     def sort_by_column(self, treeview, col, descending):
         # Get the current data in the treeview
@@ -417,79 +430,68 @@ class AdminApp:
         self.user_table.column('#3', width=150, stretch=NO)
 
         self.user_table.place(relx=0, rely=0, relheight=1, relwidth=1)
+        
+    def setup_purchase_order_table(self):
+        order_details_label = CTkLabel(self.table_frame5, text="Purchase Order Details:",
+                                           font=("Helvetica", 20, 'bold'),
+                                           text_color='black')
+        order_details_label.pack(anchor=W, pady=10)
 
-    def setup_tasks_table(self):
-        self.task_table = ttk.Treeview(self.table_frame3, selectmode=BROWSE,
-                                       columns=('ID', 'Task', 'Assigned To', 'Status'))
+        self.order_table = ttk.Treeview(self.table_frame5, columns=(
+            "ID", "Product Name", "Product ID", "Category", "Quantity", "Vendor ID"), show='headings')
+        self.order_table.heading("ID", text="ID")
+        self.order_table.heading("Product Name", text="Product Name")
+        self.order_table.heading("Product ID", text="Product ID")
+        self.order_table.heading("Category", text="Category")
+        self.order_table.heading("Quantity", text="Quantity")
+        self.order_table.heading("Vendor ID", text="Vendor ID")
+        self.order_table.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-        Y_Scroller = Scrollbar(self.task_table, orient=VERTICAL, command=self.task_table.yview)
-        Y_Scroller.pack(side=RIGHT, fill=Y)
+        vendor_details_label = CTkLabel(self.table_frame6, text="Vendor Details:", font=("Helvetica", 20, 'bold'),
+                                            text_color='black')
+        vendor_details_label.pack(anchor=W, pady=10)
 
-        self.task_table.config(yscrollcommand=Y_Scroller.set)
+        self.vendor_table = ttk.Treeview(self.table_frame6, columns=("ID", "Name", "Email", "Phone", "Company"),
+                                        show='headings')
+        self.vendor_table.heading("ID", text="ID")
+        self.vendor_table.heading("Name", text="Name")
+        self.vendor_table.heading("Email", text="Email")
+        self.vendor_table.heading("Phone", text="Phone")
+        self.vendor_table.heading("Company", text="Company")
+        self.vendor_table.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-        self.task_table.heading('ID', text='ID', anchor=CENTER)
-        self.task_table.heading('Task', text='Task', anchor=CENTER)
-        self.task_table.heading('Assigned To', text='Assigned To', anchor=CENTER)
-        self.task_table.heading('Status', text='Status', anchor=CENTER)
-
-        self.task_table.column('#0', width=0, stretch=NO)
-        self.task_table.column('#1', width=50, stretch=NO)
-        self.task_table.column('#2', width=300, stretch=NO)
-        self.task_table.column('#3', width=50, stretch=NO)
-
-        self.task_table.place(relx=0, rely=0, relheight=1, relwidth=1)
-
-    def setup_tasks2_table(self):
-        self.task2_table = ttk.Treeview(self.table_frame4, selectmode=BROWSE,
-                                        columns=('ID', 'Task', 'Status'))
-
-        Y_Scroller = Scrollbar(self.task2_table, orient=VERTICAL, command=self.task2_table.yview)
-        Y_Scroller.pack(side=RIGHT, fill=Y)
-
-        self.user_table.config(yscrollcommand=Y_Scroller.set)
-
-        self.task2_table.heading('ID', text='ID', anchor=CENTER)
-        self.task2_table.heading('Task', text='Task', anchor=CENTER)
-        self.task2_table.heading('Status', text='Status', anchor=CENTER)
-
-        self.task2_table.column('#0', width=0, stretch=NO)
-        self.task2_table.column('#1', width=300, stretch=NO)
-        self.task2_table.column('#2', width=100, stretch=NO)
-
-        self.task2_table.place(relx=0, rely=0, relheight=1, relwidth=1)
-
-    # Inventory Management
+    # Dashboards buttons open
     def open_inventory_panel(self):
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame.place_forget()
         self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        # self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
         self.chart_frame.place_forget()
         self.hide_move_product_widgets()
-        self.detail_frame.place_forget()
-
 
     def close_subpanel(self):
         self.button_frame_users.place_forget()
         self.button_frame.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame_inventory.place_forget()
-        self.button_frame_tasks.place_forget()
-        self.button_frame_tasks2.place_forget()
+        # self.button_frame_tasks.place_forget()
+        # self.button_frame_tasks2.place_forget()
+        self.button_frame_purchase.place_forget()
         self.table_frame.place_forget()
         self.table_frame2.place_forget()
         self.table_frame3.place_forget()
         self.table_frame4.place_forget()
+        self.table_frame5.place_forget()
+        self.table_frame6.place_forget()
         self.data_entry_frame.place_forget()
         self.task_assignment_frame.place_forget()
         self.task_assignment_frame2.place_forget()
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        self.detail_frame.pack()
-        self.detail_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.30)
-        self.show_bar_chart()
-        self.display_product_info()
+        self.show_dashboard()
 
-    def open_purchase_order(self):
-        subprocess.run(["python", "Purchase order.py", username])
+    # def open_purchase_order_panel(self):
+    #     subprocess.run(["python", "Purchase order.py"])
+    #
+    # def open_vendor_details_panel(self):
+    #     subprocess.run(["python", "Vendor details.py"])
 
     def list_all_inventory(self):
         self.table.delete(*self.table.get_children())
@@ -511,6 +513,55 @@ class AdminApp:
         self.date.set_date(today_date)
         self.table.selection_remove(*self.table.selection())
 
+        ## Notification OG############################################################################################
+        self.parent = self.parent
+        self.root = Tk()
+        self.root.title('Notification')
+        self.root.geometry('500x600')
+
+        self.dashboard1_frame = Frame(self.root)
+        self.dashboard1_frame.pack()
+
+        self.NOTIFICATION_LIST = Listbox(self.root)
+        self.NOTIFICATION_LIST.pack()
+
+        self.delete_notification_button = Button(self.dashboard1_frame,
+                                                 text="Delete Notification",
+                                                 command=self.delete_notification)
+        self.delete_notification_button.pack(pady=10)
+
+        self.display_notifications()
+
+    def display_notifications(self):
+        try:
+            self.cursor.execute("SELECT * FROM notifications")
+            records = self.cursor.fetchall()
+
+            self.NOTIFICATION_LIST.delete(0, END)
+            for record in records:
+                self.NOTIFICATION_LIST.insert(END, record[1])
+        except sqlite3.Error as e:
+            print("Error fetching notifications:", e)
+
+    def add_notification(self):
+        new_notification = "New Notification"
+        self.cursor.execute("INSERT INTO notifications (notification_description) "
+                            "VALUES (?)", (new_notification,))
+        self.connector.commit()
+        self.display_notifications()
+
+    def delete_notification(self):
+        selected_index = self.NOTIFICATION_LIST.curselection()
+        if not selected_index:
+            mb.showerror('No notification selected!', 'Please select a notification to delete!')
+            return
+
+        notification_id = selected_index[0] + 1  # Adjust index since SQLite starts from 1
+        self.cursor.execute("DELETE FROM notifications WHERE id = ?", (notification_id,))
+        self.connector.commit()
+        self.display_notifications()
+
+    ####################### CRUD#########################################################################################
     def remove_inventory(self):
         if not self.table.selection():
             mb.showerror('No record selected!', 'Please select a record to delete!')
@@ -528,39 +579,7 @@ class AdminApp:
 
             self.list_all_inventory()
             mb.showinfo('Record deleted successfully!', f'The record of {values_selected[0]} was deleted successfully')
-
-    def remove_all_inventory(self):
-        surety = mb.askyesno('Are you sure?', 'Are you sure that you want to delete all the records from the database?',
-                             icon='warning')
-
-        if surety:
-            self.table.delete(*self.table.get_children())
-
-            self.connector.execute('DELETE FROM Inventory')
-            self.connector.commit()
-
-            self.list_all_inventory()
-            mb.showinfo('All Records deleted successfully!', 'All the records were deleted successfully')
-
-    def view_product_details(self):
-        if not self.table.selection():
-            mb.showerror('No record selected!', 'Please select a record to view!')
-            return
-
-        current_selected_product = self.table.item(self.table.focus())
-        values = current_selected_product['values']
-
-        view_details_window = Toplevel()
-        view_details_window.geometry('400x400')
-        view_details_window.title(f'Record of {values[1]}')
-
-        Label(view_details_window, text=f"Product Name: {values[1]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Product ID: {values[2]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Stocks: {values[3]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Category: {values[4]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Purchase Price: {values[5]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Selling Price: {values[6]}", font=('Gill Sans MT', 13)).pack()
-        Label(view_details_window, text=f"Location: {values[7]}", font=('Gill Sans MT', 13)).pack()
+            self.add_notification()
 
     def edit_product_details(self):
         if not self.table.selection():
@@ -785,11 +804,13 @@ class AdminApp:
             self.connector.commit()
 
             mb.showinfo('Updated successfully',
-                        f'The record of {self.PRODUCT_NAME.get()} was updated successfully and {amount_to_move} items were moved to {new_location}')
+                        f'The record of {self.PRODUCT_NAME.get()} was updated successfully and {amount_to_move} items '
+                        f'were moved to {new_location}')
+            self.add_notification()
             self.list_all_inventory()
             self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
             self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-            # self.add_btn.place_forget()
+            self.add_btn.place_forget()
             # self.add_btn1.place_forget()
             # self.add_btn2.place_forget()
             # self.add_btn3.place_forget()
@@ -846,6 +867,7 @@ class AdminApp:
 
             mb.showinfo('Updated successfully',
                         f'The record of {self.product_name_entry.get()} was updated successfully.')
+            self.add_notification()
             self.list_all_inventory()
             self.edit_window.destroy()
         except Exception as e:
@@ -860,67 +882,95 @@ class AdminApp:
         self.setup_data_entry_widgets()
         self.clear_fields()
 
-    # User Management
+    # User Management panel
     def open_user_management_panel(self):
         self.button_frame.place_forget()
         self.chart_frame.place_forget()
         self.button_frame_users.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.table_frame2.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        self.detail_frame.place_forget()
 
-
-    def load_users(self):
-        self.user_table.delete(*self.user_table.get_children())
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT id, username, role FROM users')
-        users = cursor.fetchall()
-        conn.close()
-
-        for user in users:
-            self.user_table.insert('', END, values=user)
-
+    #  User Management (Add new user) update the code
     def add_user(self):
-        def save_user():
-            username = username_var.get()
-            password = password_var.get()
-            role = role_var.get()
-
-            if username and password and role:
-                hashed_password = hashlib.sha256(password.encode()).hexdigest()
-                conn = sqlite3.connect('users.db')
-                cursor = conn.cursor()
-                cursor.execute('INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-                               (username, hashed_password, role))
-                conn.commit()
-                conn.close()
-                mb.showinfo('User added', 'The user was successfully added')
-                self.load_users()
-                add_user_window.destroy()
-
-            else:
-                mb.showerror('Error', 'All fields are required')
-
         add_user_window = Toplevel(self.root)
-        add_user_window.title('Add User')
-        add_user_window.geometry('300x200')
+        add_user_window.title("Add User")
+        add_user_window.geometry("400x300")
+        add_user_window.resizable(False, False)
 
         username_var = StringVar()
         password_var = StringVar()
         role_var = StringVar()
+        show_password_var = BooleanVar()
 
-        Label(add_user_window, text='Username:').place(x=20, y=20)
-        Entry(add_user_window, textvariable=username_var).place(x=100, y=20)
+        Label(add_user_window, text="Username").grid(row=0, column=0, padx=10, pady=5, sticky='e')
+        Entry(add_user_window, textvariable=username_var).grid(row=0, column=1, padx=10, pady=5)
 
-        Label(add_user_window, text='Password:').place(x=20, y=60)
-        Entry(add_user_window, textvariable=password_var, show='*').place(x=100, y=60)
+        Label(add_user_window, text="Password").grid(row=1, column=0, padx=10, pady=5, sticky='e')
+        password_entry = Entry(add_user_window, textvariable=password_var, show="*")
+        password_entry.grid(row=1, column=1, padx=10, pady=5)
 
-        Label(add_user_window, text='Role:').place(x=20, y=100)
-        ttk.OptionMenu(add_user_window, role_var, 'Supervisor', 'Supervisor',
-                       'Worker').place(x=100, y=100)
+        self.show_icon = PhotoImage(file="show_password.png")  # Path to your "show password" icon
+        self.hide_icon = PhotoImage(file="hide_password.png")  # Path to your "hide password" icon
 
-        Button(add_user_window, text='Save', command=save_user).place(x=120, y=150)
+        user_toggle_button = Button(add_user_window, image=self.show_icon,
+                                    command=lambda: self.new_user_toggle_password(password_entry, show_password_var,
+                                                                                  user_toggle_button))
+        user_toggle_button.grid(row=1, column=2, padx=10, pady=5)
 
+        Label(add_user_window, text="Role:").grid(row=2, column=0, padx=10, pady=5, sticky='e')
+        ttk.OptionMenu(add_user_window, role_var, 'Supervisor', 'Supervisor', 'Worker').grid(row=2, column=1, padx=10,
+                                                                                             pady=5)
+
+        def save_user():
+            username = username_var.get()
+            password = password_var.get()
+            role = role_var.get()
+            if username and password and role:
+                try:
+                    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+                    conn = sqlite3.connect('AcrePliances.db')
+                    cursor = conn.cursor()
+                    cursor.execute('INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+                                   (username, hashed_password, role))
+                    conn.commit()
+                    mb.showinfo('User added', 'The user was successfully added')
+                    self.load_users()
+                    self.add_notification()
+                except sqlite3.Error as e:
+                    mb.showerror('Database Error', f'Error: {e}')
+                finally:
+                    conn.close()
+                add_user_window.destroy()
+            else:
+                mb.showerror('Error', 'All fields are required')
+
+        Button(add_user_window, text="Save", command=save_user).grid(row=3, column=1, padx=10, pady=15)
+
+    def load_users(self):
+        self.user_table.delete(*self.user_table.get_children())
+        try:
+            conn = sqlite3.connect('AcrePliances.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT USER_REAL_ID, username, role FROM users')
+            users = cursor.fetchall()
+            for user in users:
+                self.user_table.insert('', END, values=user)
+        except sqlite3.Error as e:
+            mb.showerror('Database Error', f'Error: {e}')
+        finally:
+            conn.close()
+
+    def new_user_toggle_password(self, password_entry, show_password_var, toggle_button):
+        if show_password_var.get():
+            password_entry.config(show='*')
+            toggle_button.config(image=self.show_icon)
+        else:
+            password_entry.config(show='')
+            toggle_button.config(image=self.hide_icon)
+        show_password_var.set(not show_password_var.get())
+
+    ########################################################################################################################
+
+    # Delete user from the WIMS
     def delete_user(self):
         selected_item = self.user_table.selection()
         if not selected_item:
@@ -933,15 +983,17 @@ class AdminApp:
             confirm = mb.askyesno('Delete user?', f'Are you sure you want to delete user {selected_user[1]}?',
                                   icon='warning')
             if confirm:
-                conn = sqlite3.connect('users.db')
+                conn = sqlite3.connect('AcrePliances.db')
                 cursor = conn.cursor()
-                cursor.execute('DELETE FROM users WHERE id = ?', (selected_user[0],))
+                cursor.execute('DELETE FROM users WHERE USER_REAL_ID = ?', (selected_user[0],))
                 conn.commit()
                 conn.close()
 
                 self.user_table.delete(current_item)
                 mb.showinfo('User deleted', 'The selected user was successfully deleted')
+                self.add_notification()
 
+    # Function that open the task window
     def open_task_panel(self):
         self.button_frame.place_forget()
         self.chart_frame.place_forget()
@@ -960,7 +1012,7 @@ class AdminApp:
 
     def load_tasks(self):
         self.task_table.delete(*self.task_table.get_children())
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect('AcrePliances.db')
         cursor = conn.cursor()
         cursor.execute('SELECT id, task, assigned_to, status FROM tasks')
         tasks = cursor.fetchall()
@@ -973,7 +1025,7 @@ class AdminApp:
         for i in self.task2_table.get_children():
             self.task2_table.delete(i)
 
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect('AcrePliances.db')
         cursor = conn.cursor()
         cursor.execute("SELECT id, task, status FROM tasks WHERE assigned_to=?", (self.username,))
         for task in cursor.fetchall():
@@ -988,7 +1040,7 @@ class AdminApp:
             print(f"Selected Item: {selected_item}, New Status: {new_status}")
             if new_status:
                 try:
-                    conn = sqlite3.connect('users.db')
+                    conn = sqlite3.connect('AcrePliances.db')
                     cursor = conn.cursor()
                     cursor.execute("UPDATE tasks SET status=? WHERE id=?", (new_status, selected_item))
                     conn.commit()
@@ -1008,12 +1060,309 @@ class AdminApp:
             mb.showerror("Error", "Please fill in all fields")
             return
 
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect('AcrePliances.db')
         cursor = conn.cursor()
         cursor.execute("INSERT INTO tasks (task, assigned_to, status) VALUES (?, ?, ?)", (task, worker, "Incomplete"))
         conn.commit()
         conn.close()
         self.load_tasks()
+      
+    # Purchase Order
+
+    def open_purchase_order_panel(self):
+        self.button_frame_purchase.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
+        self.button_frame.place_forget()
+        self.table_frame5.place(relx=0.22, rely=0.25, relwidth=0.78, relheight=0.30)
+        self.table_frame6.place(relx=0.22, rely=0.60, relwidth=0.78, relheight=0.30)
+        self.chart_frame.place_forget()
+
+    def load_order_data(self):
+        self.order_table.delete(*self.order_table.get_children())
+
+        self.cursor.execute('SELECT * FROM Orders')
+        rows = self.cursor.fetchall()
+
+        for row in rows:
+            self.order_table.insert('', 'end', values=row)
+
+    def create_purchase_order_window(self):
+        self.extra_window = CTkToplevel(self.root)
+        self.extra_window.title('Add Sales Order')
+        self.extra_window.geometry('600x600')
+        title_label = CTkLabel(self.extra_window, text="ADD NEW SALES ORDER", font=("Helvetica", 20, 'bold'))
+        title_label.pack(pady=20)
+
+        # Product Name
+        name_frame = CTkFrame(self.extra_window)
+        name_frame.pack(pady=5, padx=10, fill=X)
+        name_label = CTkLabel(name_frame, text="Product Name:")
+        name_label.pack(side=LEFT)
+        self.name_entry = CTkEntry(name_frame)
+        self.name_entry.pack(side=RIGHT, fill=X, expand=True)
+
+        # Category
+        category_frame = CTkFrame(self.extra_window)
+        category_frame.pack(pady=5, padx=10, fill=X)
+        category_label = CTkLabel(category_frame, text="Category:")
+        category_label.pack(side=LEFT)
+        self.category_var = StringVar()
+        self.category_menu = ttk.Combobox(category_frame, textvariable=self.category_var,
+                                          values=["Electronics", "Appliances", "Personal Care", "Homeware",
+                                                  "Furniture"])
+        self.category_menu.pack(side=RIGHT, fill=X, expand=True)
+
+        # Quantity
+        quantity_frame = CTkFrame(self.extra_window)
+        quantity_frame.pack(pady=5, padx=10, fill=X)
+        quantity_label = CTkLabel(quantity_frame, text="Quantity:")
+        quantity_label.pack(side=LEFT)
+        self.quantity_entry = CTkEntry(quantity_frame)
+        self.quantity_entry.pack(side=RIGHT, fill=X, expand=True)
+
+        # Vendor ID
+        vendor_id_frame = CTkFrame(self.extra_window)
+        vendor_id_frame.pack(pady=5, padx=10, fill=X)
+        vendor_id_label = CTkLabel(vendor_id_frame, text="Vendor ID:")
+        vendor_id_label.pack(side=LEFT)
+        self.vendor_id_var = StringVar()
+        self.vendor_id_menu = ttk.Combobox(vendor_id_frame, textvariable=self.vendor_id_var)
+        self.vendor_id_menu.pack(side=RIGHT, fill=X, expand=True)
+        self.load_vendor_ids()
+
+        add_button = CTkButton(self.extra_window, text="Add Order", command=self.add_order)
+        add_button.pack(pady=10)
+
+        clear_button = CTkButton(self.extra_window, text="Clear", command=self.clear_order_entries)
+        clear_button.pack(pady=10)
+
+    def load_vendor_ids(self):
+        self.cursor.execute('SELECT VENDOR_ID FROM Vendors')
+        vendor_ids = [row[0] for row in self.cursor.fetchall()]
+        self.vendor_id_menu['values'] = vendor_ids
+
+    def add_order(self):
+        product_name = self.name_entry.get()
+        category = self.category_var.get()
+        quantity = self.quantity_entry.get()
+        vendor_id = self.vendor_id_var.get()
+
+        if product_name and category and quantity and vendor_id:
+            product_id = self.generate_product_id(category)
+            self.cursor.execute(
+                'INSERT INTO Orders (PRODUCT_NAME, PRODUCT_ID, CATEGORY, QUANTITY, VENDOR_ID) VALUES (?, ?, ?, ?, ?)',
+                (product_name, product_id, category, quantity, vendor_id)
+            )
+            self.connector.commit()
+            self.load_order_data()
+            mb.showinfo('Success', 'Order added successfully!')
+            self.extra_window.destroy()
+        else:
+            mb.showwarning('Error', 'Please fill in all fields.')
+
+    def generate_product_id(self, category):
+        self.cursor.execute('SELECT COUNT(*) FROM Orders WHERE CATEGORY=?', (category,))
+        count = self.cursor.fetchone()[0]
+        product_id = f"{category[0].upper()}{count + 1:03d}"
+        return product_id
+
+    def edit_order_window(self):
+        selected_item = self.order_table.selection()
+        if not selected_item:
+            mb.showwarning('Error', 'Please select an order to edit.')
+            return
+
+        order_id = self.order_table.item(selected_item)['values'][0]
+        self.extra_window = CTkToplevel(self.root)
+        self.extra_window.title('Edit Sales Order')
+        self.extra_window.geometry('600x600')
+
+        title_label = CTkLabel(self.extra_window, text="EDIT SALES ORDER", font=("Helvetica", 20, 'bold'))
+        title_label.pack(pady=20)
+
+        self.cursor.execute('SELECT * FROM Orders WHERE ORDER_ID=?', (order_id,))
+        order = self.cursor.fetchone()
+
+        self.edit_order_id = order[0]
+
+        # Product Name
+        name_frame = CTkFrame(self.extra_window)
+        name_frame.pack(pady=5, padx=10, fill=X)
+        name_label = CTkLabel(name_frame, text="Product Name:")
+        name_label.pack(side=LEFT)
+        self.name_entry = CTkEntry(name_frame)
+        self.name_entry.insert(0, order[1])
+        self.name_entry.pack(side=RIGHT, fill=X, expand=True)
+
+        # Category
+        category_frame = CTkFrame(self.extra_window)
+        category_frame.pack(pady=5, padx=10, fill=X)
+        category_label = CTkLabel(category_frame, text="Category:")
+        category_label.pack(side=LEFT)
+        self.category_var = StringVar()
+        self.category_menu = ttk.Combobox(category_frame, textvariable=self.category_var,
+                                          values=["Electronics", "Appliances", "Personal Care", "Homeware",
+                                                  "Furniture"])
+        self.category_menu.set(order[3])
+        self.category_menu.pack(side=RIGHT, fill=X, expand=True)
+
+        # Quantity
+        quantity_frame = CTkFrame(self.extra_window)
+        quantity_frame.pack(pady=5, padx=10, fill=X)
+        quantity_label = CTkLabel(quantity_frame, text="Quantity:")
+        quantity_label.pack(side=LEFT)
+        self.quantity_entry = CTkEntry(quantity_frame)
+        self.quantity_entry.insert(0, order[4])
+        self.quantity_entry.pack(side=RIGHT, fill=X, expand=True)
+
+        # Vendor ID
+        vendor_id_frame = CTkFrame(self.extra_window)
+        vendor_id_frame.pack(pady=5, padx=10, fill=X)
+        vendor_id_label = CTkLabel(vendor_id_frame, text="Vendor ID:")
+        vendor_id_label.pack(side=LEFT)
+        self.vendor_id_var = StringVar()
+        self.vendor_id_menu = ttk.Combobox(vendor_id_frame, textvariable=self.vendor_id_var)
+        self.vendor_id_menu.pack(side=RIGHT, fill=X, expand=True)
+        self.load_vendor_ids()
+        self.vendor_id_menu.set(order[5])
+
+        save_button = CTkButton(self.extra_window, text="Save Changes", command=self.save_order_changes)
+        save_button.pack(pady=10)
+
+    def save_order_changes(self):
+        product_name = self.name_entry.get()
+        category = self.category_var.get()
+        quantity = self.quantity_entry.get()
+        vendor_id = self.vendor_id_var.get()
+
+        if product_name and category and quantity and vendor_id:
+            self.cursor.execute(
+                'UPDATE Orders SET PRODUCT_NAME=?, CATEGORY=?, QUANTITY=?, VENDOR_ID=? WHERE ORDER_ID=?',
+                (product_name, category, quantity, vendor_id, self.edit_order_id)
+            )
+            self.connector.commit()
+            self.load_order_data()
+            mb.showinfo('Success', 'Order updated successfully!')
+            self.extra_window.destroy()
+        else:
+            mb.showwarning('Error', 'Please fill in all fields.')
+
+    def delete_order(self):
+        selected_item = self.order_table.selection()
+        if not selected_item:
+            mb.showwarning('Error', 'Please select an order to delete.')
+            return
+
+        confirm = mb.askyesno('Confirm Delete', 'Are you sure you want to delete the selected order?')
+        if not confirm:
+            return
+
+        order_id = self.order_table.item(selected_item)['values'][0]
+        self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID=?', (order_id,))
+        self.connector.commit()
+        self.load_order_data()
+        mb.showinfo('Success', 'Order deleted successfully!')
+
+    def load_vendor_data(self):
+        self.vendor_table.delete(*self.vendor_table.get_children())
+
+        self.cursor.execute('SELECT * FROM Vendors')
+        rows = self.cursor.fetchall()
+
+        for row in rows:
+            self.vendor_table.insert('', 'end', values=row)
+
+    def clear_order_entries(self):
+        self.name_entry.delete(0, END)
+        self.category_menu.set('')
+        self.quantity_entry.delete(0, END)
+        self.vendor_id_menu.set('')
+
+    def complete_order_window(self):
+        selected_item = self.order_table.selection()
+        if not selected_item:
+            mb.showwarning('Error', 'Please select an order to complete.')
+            return
+
+        order_id = self.order_table.item(selected_item)['values'][0]
+        self.extra_window = CTkToplevel(self.root)
+        self.extra_window.title('Complete Order')
+        self.extra_window.geometry('600x600')
+
+        title_label = CTkLabel(self.extra_window, text="COMPLETE ORDER", font=("Helvetica", 14))
+        title_label.pack(pady=20)
+
+        self.cursor.execute('SELECT * FROM Orders WHERE ORDER_ID=?', (order_id,))
+        order = self.cursor.fetchone()
+
+        self.complete_order_id = order[0]
+
+        # Date
+        date_frame = CTkFrame(self.extra_window)
+        date_frame.pack(pady=5, padx=10, fill=X)
+        date_label = CTkLabel(date_frame, text="Date:")
+        date_label.pack(side=LEFT)
+        self.date_entry = CTkEntry(date_frame)
+        self.date_entry.insert(0, datetime.date.today().strftime("%Y-%m-%d"))
+        self.date_entry.pack(side=RIGHT, fill=X, expand=True)
+
+        # Purchase Price
+        purchase_price_frame = CTkFrame(self.extra_window)
+        purchase_price_frame.pack(pady=5, padx=10, fill=X)
+        purchase_price_label = CTkLabel(purchase_price_frame, text="Purchase Price:")
+        purchase_price_label.pack(side=LEFT)
+        self.purchase_price_entry = CTkEntry(purchase_price_frame)
+        self.purchase_price_entry.pack(side=RIGHT, fill=X, expand=True)
+
+        # Selling Price
+        selling_price_frame = CTkFrame(self.extra_window)
+        selling_price_frame.pack(pady=5, padx=10, fill=X)
+        selling_price_label = CTkLabel(selling_price_frame, text="Selling Price:")
+        selling_price_label.pack(side=LEFT)
+        self.selling_price_entry = CTkEntry(selling_price_frame)
+        self.selling_price_entry.pack(side=RIGHT, fill=X, expand=True)
+
+        complete_button = CTkButton(self.extra_window, text="Complete Order", command=self.complete_order)
+        complete_button.pack(pady=10)
+
+    def complete_order(self):
+        order_id = self.complete_order_id
+        date = self.date_entry.get()
+        purchase_price = self.purchase_price_entry.get()
+        selling_price = self.selling_price_entry.get()
+
+        try:
+            purchase_price = float(purchase_price)
+            selling_price = float(selling_price)
+        except ValueError:
+            mb.showwarning('Error', 'Please enter valid prices.')
+            return
+
+        self.cursor.execute('SELECT * FROM Orders WHERE ORDER_ID=?', (order_id,))
+        order = self.cursor.fetchone()
+
+        product_name = order[1]
+        product_id = order[2]
+        category = order[3]
+        quantity = order[4]
+
+        location = 'Receiving Area'
+        location_prefix = 'REC'
+        internal_reference = f"WH-{location_prefix}-{product_id}"
+
+        self.connector.execute(
+            'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, '
+            'LOCATION, INTERNAL_REFERENCE)'
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (date, product_name, product_id, quantity, category, purchase_price, selling_price, location,
+             internal_reference)
+        )
+        self.connector.commit()
+
+        self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID=?', (order_id,))
+        self.connector.commit()
+        self.load_order_data()
+        mb.showinfo('Success', 'Order completed and transferred successfully!')
+        self.extra_window.destroy()
 
     def generate_pdf_report(self, product_name, product_id, stocks, category, purchase_price, selling_price, location,
                             date, action):
@@ -1041,8 +1390,8 @@ class AdminApp:
 
         mb.showinfo('PDF Report', f'{action} report generated: {pdf_name}')
 
-    def show_bar_chart(self):
-        self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
+    def show_dashboard(self):
+        self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.75)
 
         # Modify SQL query to group by product name and sum stocks
         all_data = self.connector.execute('SELECT PRODUCT_NAME, SUM(STOCKS) FROM Inventory GROUP BY PRODUCT_NAME')
@@ -1054,20 +1403,58 @@ class AdminApp:
 
         product_names = [item[0] for item in data]
         stocks = [item[1] for item in data]
+        total_stocks = sum(stocks)
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.bar(product_names, stocks, color='orange')
-        ax.set_xlabel('Product Name', color='black')
-        ax.set_ylabel('Total Stocks', color='black')
-        ax.set_title('Inventory Stocks', color='black')
+        fig, axs = plt.subplots(2, 2, figsize=(14, 10), gridspec_kw={'hspace': 0.4, 'wspace': 0.4})
+        fig.suptitle('Inventory Dashboard', fontsize=20)
 
-        # Set the tick positions to match the number of products
-        ax.set_xticks(range(len(product_names)))
-        # Set the tick labels to the product names
-        ax.set_xticklabels(product_names, rotation=45, ha='right', color='black')
-        ax.tick_params(axis='y', colors='black')  # Set the color of the y-axis ticks
+        # Bar Chart
+        axs[0, 0].bar(product_names, stocks, color='orange', edgecolor='black')
+        axs[0, 0].set_title('Total Stocks by Product', fontsize=14)
+        axs[0, 0].set_xlabel('Product Name', fontsize=12)
+        axs[0, 0].set_ylabel('Total Stocks', fontsize=12)
+        axs[0, 0].set_xticklabels(product_names, rotation=45, ha='right')
+        axs[0, 0].tick_params(axis='x', labelsize=10)
+        axs[0, 0].tick_params(axis='y', labelsize=10)
 
-        plt.tight_layout()
+        # Pie Chart
+        axs[0, 1].pie(stocks, labels=product_names, autopct='%1.1f%%', startangle=140, colors=plt.cm.Paired(np.arange(len(product_names))), wedgeprops={'edgecolor': 'black'})
+        axs[0, 1].set_title('Stock Distribution by Product', fontsize=14)
+
+        # Line Graph (Trend over time - Simulated Data)
+        dates = np.arange(1, len(product_names) + 1)
+        trend_data = np.cumsum(np.random.randint(1, 100, size=(len(product_names),)))
+
+        axs[1, 0].plot(dates, trend_data, marker='o', linestyle='-', color='blue', markeredgewidth=2, markeredgecolor='black')
+        axs[1, 0].set_title('Stock Trends over Time (Simulated)', fontsize=14)
+        axs[1, 0].set_xlabel('Time (Simulated)', fontsize=12)
+        axs[1, 0].set_ylabel('Cumulative Stocks', fontsize=12)
+        axs[1, 0].tick_params(axis='x', labelsize=10)
+        axs[1, 0].tick_params(axis='y', labelsize=10)
+
+        # Summary Statistics and Low Stock Alerts
+        low_stock_threshold = 20
+        low_stock_products = [(product_names[i], stocks[i]) for i in range(len(stocks)) if stocks[i] < low_stock_threshold]
+
+        mean_stock = np.mean(stocks)
+        median_stock = np.median(stocks)
+        min_stock = np.min(stocks)
+        max_stock = np.max(stocks)
+
+        summary_text = (f'Total Stocks: {total_stocks}\n'
+                        f'Mean Stock: {mean_stock:.2f}\n'
+                        f'Median Stock: {median_stock:.2f}\n'
+                        f'Minimum Stock: {min_stock}\n'
+                        f'Maximum Stock: {max_stock}\n')
+
+        low_stock_text = 'Products with Low Stocks:\n' + '\n'.join([f'{item[0]}: {item[1]}' for item in low_stock_products]) if low_stock_products else 'No Low Stock Products'
+
+        summary_text += '\n\n' + low_stock_text
+
+        axs[1, 1].text(0.5, 0.5, summary_text, ha='center', va='center', fontsize=12, bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=1'))
+        axs[1, 1].axis('off')
+
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
         for widget in self.chart_frame.winfo_children():
             widget.destroy()
@@ -1075,61 +1462,6 @@ class AdminApp:
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=BOTH, expand=1)
-
-    def display_product_info(self):
-        # Query to get the total products count
-        total_products_query = 'SELECT COUNT(*) FROM Inventory'
-        total_products = self.connector.execute(total_products_query).fetchone()[0]
-
-        # Query to get products with stocks below 20
-        low_stock_query = 'SELECT PRODUCT_NAME, STOCKS FROM Inventory WHERE STOCKS < 20'
-        low_stock_products = self.connector.execute(low_stock_query).fetchall()
-
-        # Clear the detail_frame
-        for widget in self.detail_frame.winfo_children():
-            widget.destroy()
-
-        # Add a canvas to handle scrollable content
-        canvas = Canvas(self.detail_frame, bg="white", highlightthickness=0)
-        canvas.pack(side="left", fill="both", expand=True)
-
-        # Add a scrollbar
-        scrollbar = CTkScrollbar(self.detail_frame, orientation="vertical", command=canvas.yview)
-        scrollbar.pack(side="right", fill="y")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Add an inner frame within the canvas
-        inner_frame = CTkFrame(canvas, fg_color="#f5f5f5")
-        canvas.create_window((0, 0), window=inner_frame, anchor="nw")
-
-        # Add a frame for total products
-        total_frame = CTkFrame(inner_frame, fg_color="#e6f7ff", border_width=2, border_color="#007acc")
-        total_frame.pack(fill="both", padx=20, pady=10)
-
-        total_label = CTkLabel(total_frame, text=f"Total Products: {total_products}", font=("Arial", 18, "bold"),
-                                   pady=10, text_color="#007acc")
-        total_label.pack(padx=10, pady=10)
-
-        # Add a frame for low stock products
-        low_stock_frame = CTkFrame(inner_frame, fg_color="#fff0f0", border_width=2, border_color="#cc0000")
-        low_stock_frame.pack(fill="both", padx=20, pady=10, expand=True)
-
-        low_stock_label = CTkLabel(low_stock_frame, text="Products with Low Stock (Below 20):",
-                                       font=("Arial", 18, "bold"), pady=10, text_color="#cc0000")
-        low_stock_label.pack(padx=10, pady=10)
-
-        if low_stock_products:
-            for product in low_stock_products:
-                product_label = CTkLabel(low_stock_frame, text=f"{product[0]} - {product[1]} items left",
-                                             font=("Arial", 16), text_color="#cc0000")
-                product_label.pack(anchor="w", padx=20, pady=5)
-        else:
-            no_low_stock_label = CTkLabel(low_stock_frame, text="No products with low stock.", font=("Arial", 16))
-            no_low_stock_label.pack(anchor="w", padx=20, pady=5)
-
-        # Update the scroll region of the canvas
-        inner_frame.update_idletasks()
-        canvas.config(scrollregion=canvas.bbox("all"))
 
     def restart_login_page(self):
         root.quit()
