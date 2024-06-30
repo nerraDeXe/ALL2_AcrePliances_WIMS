@@ -161,10 +161,6 @@ class VendorApp:
         clear_button = ctk.CTkButton(self.extra_window, text="Clear", command=self.clear_vendor_entries)
         clear_button.pack(pady=10)
 
-    def add_notification(self, description):
-        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION) VALUES (?)', (description,))
-        self.connector.commit()
-
     def add_vendor(self):
         name = self.name_entry.get()
         email = self.email_entry.get()
@@ -290,6 +286,11 @@ class VendorApp:
         self.phone_entry.delete(0, tk.END)
         self.company_entry.delete(0, tk.END)
 
+    ################################################NOTIFICAITON FUNCTIONS##############################################
+    def add_notification(self, description):
+        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION) VALUES (?)', (description,))
+        self.connector.commit()
+
     def show_notifications_window(self):
         notification_window = ctk.CTkToplevel(self.root)
         notification_window.title('Notifications')
@@ -312,43 +313,54 @@ class VendorApp:
         delete_button.pack(pady=10)
 
     def delete_selected_notification(self):
+        # Get selected indices from the notification list
         selected_indices = self.NOTIFICATION_LIST.curselection()
+
+        # Loop through selected indices and delete the corresponding notifications
+        for index in selected_indices:
+            try:
+                # Fetch the notification ID using the index
+                notification_id = self.notification_ids[index]
+                # Execute the SQL delete command
+                self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
+                self.connector.commit()
+            except sqlite3.Error as e:
+                # Show error message if there is an issue with deletion
+                messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
+                return
+
+        # Check if any notification is selected
         if not selected_indices:
             messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
             return
 
+        # Ask for confirmation before deleting the selected notification(s)
         confirm_delete = messagebox.askyesno('Confirm Delete',
                                              'Are you sure you want to delete the selected notification(s)?')
         if not confirm_delete:
             return
 
-        for index in selected_indices:
-            notification_id = index + 1  # SQLite uses 1-based indexing
-            try:
-                self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
-                self.connector.commit()
-            except sqlite3.Error as e:
-                messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
-
-        # After deletion, reload notifications
+        # Reload notifications after deletion
         self.load_notifications()
 
     def load_notifications(self):
         try:
             self.NOTIFICATION_LIST.delete(0, tk.END)  # Clear the list first
+            self.notification_ids = {}  # Dictionary to store index to ID mapping
             self.cursor.execute("SELECT * FROM Notifications")
             notifications = self.cursor.fetchall()
 
-            for notification in notifications:
-                utc_timestamp = datetime.strptime(notification[2],
-                                                  '%Y-%m-%d %H:%M:%S')  # Assuming the timestamp is in the third column
+            for idx, notification in enumerate(notifications):
+                timestamp = datetime.strptime(notification[2],
+                                              '%Y-%m-%d %H:%M:%S')  # Assuming the timestamp is in the third column
                 utc_timezone = pytz.utc
                 local_timezone = pytz.timezone('Asia/Singapore')  # GMT+8 timezone
-                utc_timestamp = utc_timezone.localize(utc_timestamp)
+                utc_timestamp = utc_timezone.localize(timestamp)
                 local_timestamp = utc_timestamp.astimezone(local_timezone)
                 formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')  # Format the timestamp as desired
                 message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
                 self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
+                self.notification_ids[idx] = notification[0]  # Store the ID with the index as the key
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
