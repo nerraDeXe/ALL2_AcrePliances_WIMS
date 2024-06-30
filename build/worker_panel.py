@@ -17,20 +17,16 @@ from PIL import Image, ImageTk
 import sys
 
 
+
 class WorkerApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect("AcrePliances.db")
         self.cursor = self.connector.cursor()
-        self.connector2 = sqlite3.connect('users.db')
-        self.cursor2 = self.connector2.cursor()
 
-        self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Inventory (PRODUCT_REAL_ID INTEGER PRIMARY KEY, date DATE, PRODUCT_NAME TEXT, '
-            'PRODUCT_ID TEXT,'
-            'STOCKS INTEGER, CATEGORY VARCHAR(30), PURCHASE_PRICE FLOAT, '
-            'SELLING_PRICE FLOAT, LOCATION VARCHAR(30), INTERNAL_REFERENCE VARCHAR(30))'
-        )
-        self.connector.commit()
+        try:
+            self.create_tables()
+        except sqlite3.Error as e:
+            mb.showerror("Database Error", f"An error occurred: {e}")
 
         self.root = root
         self.username = username
@@ -49,6 +45,65 @@ class WorkerApp:
         self.custom_style.configure('Bold.TButton', font=('Helvetica', 12, 'bold'), background="black")
         self.list_all_inventory()
 
+    def create_tables(self):
+        self.cursor.execute(
+            '''CREATE TABLE IF NOT EXISTS Inventory (
+                PRODUCT_REAL_ID INTEGER PRIMARY KEY,
+                date DATE,
+                PRODUCT_NAME TEXT,
+                PRODUCT_ID TEXT,
+                STOCKS INTEGER,
+                CATEGORY VARCHAR(30),
+                PURCHASE_PRICE FLOAT,
+                SELLING_PRICE FLOAT,
+                LOCATION VARCHAR(30),
+                INTERNAL_REFERENCE VARCHAR(30)
+            )'''
+        )
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS roles (
+                role_id INTEGER PRIMARY KEY,
+                role_name TEXT NOT NULL UNIQUE
+            )
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                USER_REAL_ID INTEGER PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                role_id INTEGER NOT NULL,
+                FOREIGN KEY (role_id) REFERENCES roles (role_id)
+            )
+        ''')
+
+        roles = [('Administrator',), ('Supervisor',), ('Worker',)]
+        self.cursor.executemany('''
+            INSERT OR IGNORE INTO roles (role_name) VALUES (?)
+        ''', roles)
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS task_batches (
+                batch_id INTEGER PRIMARY KEY,
+                description TEXT NOT NULL
+            )
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY,
+                task TEXT NOT NULL,
+                assigned_to TEXT NOT NULL,
+                status TEXT NOT NULL,
+                eta DATE,
+                batch_id INTEGER,
+                FOREIGN KEY (batch_id) REFERENCES task_batches(batch_id)
+            )
+        ''')
+
+        self.connector.commit()
+
     def setup_variables(self):
         self.PRODUCT_NAME = StringVar()
         self.PRODUCT_ID = StringVar()
@@ -62,8 +117,7 @@ class WorkerApp:
         self.AMOUNT_TO_MOVE = IntVar()
         self.NEW_LOCATION = StringVar()
 
-
-# setup every frames
+    # setup every frames
     def setup_frames(self):
         self.dashboard_frame = Frame(self.root, bg='#C21A2F')
         self.dashboard_frame.place(relx=0.00, rely=0.00, relwidth=1.00, relheight=0.20)
@@ -136,6 +190,9 @@ class WorkerApp:
         self.setup_tasks2_table()
         # self.load_dashboard_image()
         # self.setup_notification_frame()
+
+    def open_task_status_panel(self):
+        subprocess.run(["python", "Task Status Update.py"])
 
     def setup_data_entry_widgets(self):
         # Setup Data Entry Widgets
@@ -230,7 +287,7 @@ class WorkerApp:
                    command=self.open_inventory_panel).place(x=40, y=135, width=200, height=50)
 
         ttk.Button(self.button_frame, text='Tasks', width=20, style='Bold.TButton',
-                   command=self.open_task2_panel).place(x=40, y=35, width=200, height=50)
+                   command=self.open_task_status_panel).place(x=40, y=35, width=200, height=50)
 
         ttk.Button(self.button_frame, text='Log out', command=self.restart_login_page, style='Bold.TButton',
                    width=20).place(x=20, y=630, width=100, height=30)
@@ -263,8 +320,6 @@ class WorkerApp:
                   border_width=0, fg_color='red', border_color='black', text_color='white',
                   font=('Microsoft YaHei UI Light', 16), corner_radius=15, hover_color='orange'
                   ).place(x=160, y=500, anchor=W)
-
-
 
     def setup_tasks2_button_widgets(self):
         ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20,
