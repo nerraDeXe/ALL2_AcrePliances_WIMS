@@ -3,6 +3,9 @@ import tkinter as tk
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 import sqlite3
+from datetime import datetime
+from PIL import Image, ImageTk
+import pytz
 
 
 class VendorApp:
@@ -18,6 +21,12 @@ class VendorApp:
             'PHONE_NUMBER VARCHAR(10), '
             'COMPANY VARCHAR(20))'
         )
+        self.connector.execute(
+            'CREATE TABLE IF NOT EXISTS Notifications ('
+            'NOTIFICATION_ID INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'DESCRIPTION TEXT, '
+            'TIMESTAMP DATETIME DEFAULT CURRENT_TIMESTAMP)'
+        )
 
         self.connector.commit()
 
@@ -26,6 +35,7 @@ class VendorApp:
         self.root.title('Vendor Details Management')
         self.root.geometry('1280x850')
         self.root.configure(bg='#BF2C37')
+        self.root.resizable(0, 0)
 
         self.create_vendor_widgets()
         self.load_vendor_data()
@@ -42,6 +52,14 @@ class VendorApp:
                                      text_color='white')
         welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
 
+        # Add notification button
+        self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
+
+        # Create the image button
+        self.notification_button = tk.Button(top_frame, image=self.notification_image, bg='white',
+                                             activebackground='darkred', command=self.show_notifications_window)
+        self.notification_button.pack(side=tk.RIGHT, padx=20, pady=20)
+
         left_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=20)
 
@@ -53,8 +71,7 @@ class VendorApp:
                                                 text_color='#000000', command=self.edit_vendor_window)
         self.edit_vendor_button.pack(pady=10)
 
-        self.delete_vendor_button = ctk.CTkButton(left_frame, text="DELETE VENDOR'S INFORMATION",
-                                                  fg_color='#FFFFFF',
+        self.delete_vendor_button = ctk.CTkButton(left_frame, text="DELETE VENDOR'S INFORMATION", fg_color='#FFFFFF',
                                                   text_color='#000000', command=self.delete_vendor)
         self.delete_vendor_button.pack(pady=10)
 
@@ -83,7 +100,6 @@ class VendorApp:
     def close_subpanel(self):
         subprocess.Popen(["python", "admin_panel.py"])  # Assuming this line opens another script or window
         self.root.destroy()  # Close the main window and all associated frames
-
 
     def load_vendor_ids(self):
         self.cursor.execute('SELECT VENDOR_ID FROM Vendors')
@@ -145,6 +161,10 @@ class VendorApp:
         clear_button = ctk.CTkButton(self.extra_window, text="Clear", command=self.clear_vendor_entries)
         clear_button.pack(pady=10)
 
+    def add_notification(self, description):
+        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION) VALUES (?)', (description,))
+        self.connector.commit()
+
     def add_vendor(self):
         name = self.name_entry.get()
         email = self.email_entry.get()
@@ -158,6 +178,7 @@ class VendorApp:
             )
             self.connector.commit()
             self.load_vendor_data()
+            self.add_notification(f'Vendor {name} added.')
             messagebox.showinfo('Success', 'Vendor added successfully!')
             self.extra_window.destroy()
         else:
@@ -235,6 +256,7 @@ class VendorApp:
                 )
                 self.connector.commit()
                 self.load_vendor_data()
+                self.add_notification(f'Updated details for Vendor {name}.')
                 messagebox.showinfo('Success', 'Vendor updated successfully!')
                 self.extra_window.destroy()
             except Exception as e:
@@ -257,6 +279,7 @@ class VendorApp:
             self.cursor.execute('DELETE FROM Vendors WHERE VENDOR_ID=?', (vendor_id,))
             self.connector.commit()
             self.load_vendor_data()
+            self.add_notification(f'Deleted Vendor with ID {vendor_id}.')
             messagebox.showinfo('Success', 'Vendor deleted successfully!')
         except Exception as e:
             messagebox.showerror('Error', f'Error deleting vendor: {str(e)}')
@@ -266,6 +289,68 @@ class VendorApp:
         self.email_entry.delete(0, tk.END)
         self.phone_entry.delete(0, tk.END)
         self.company_entry.delete(0, tk.END)
+
+    def show_notifications_window(self):
+        notification_window = ctk.CTkToplevel(self.root)
+        notification_window.title('Notifications')
+        notification_window.geometry('500x400')
+        notification_window.resizable(0, 0)
+
+        # Set the notification window to be on top of the main root window
+        notification_window.attributes('-topmost', 'true')
+
+        notification_label = ctk.CTkLabel(notification_window, text="Notifications", font=("Helvetica", 14))
+        notification_label.pack(pady=20)
+
+        self.NOTIFICATION_LIST = tk.Listbox(notification_window)
+        self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        self.load_notifications()
+
+        delete_button = ctk.CTkButton(notification_window, text="Delete Selected",
+                                      command=self.delete_selected_notification)
+        delete_button.pack(pady=10)
+
+    def delete_selected_notification(self):
+        selected_indices = self.NOTIFICATION_LIST.curselection()
+        if not selected_indices:
+            messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
+            return
+
+        confirm_delete = messagebox.askyesno('Confirm Delete',
+                                             'Are you sure you want to delete the selected notification(s)?')
+        if not confirm_delete:
+            return
+
+        for index in selected_indices:
+            notification_id = index + 1  # SQLite uses 1-based indexing
+            try:
+                self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
+                self.connector.commit()
+            except sqlite3.Error as e:
+                messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
+
+        # After deletion, reload notifications
+        self.load_notifications()
+
+    def load_notifications(self):
+        try:
+            self.NOTIFICATION_LIST.delete(0, tk.END)  # Clear the list first
+            self.cursor.execute("SELECT * FROM Notifications")
+            notifications = self.cursor.fetchall()
+
+            for notification in notifications:
+                utc_timestamp = datetime.strptime(notification[2],
+                                                  '%Y-%m-%d %H:%M:%S')  # Assuming the timestamp is in the third column
+                utc_timezone = pytz.utc
+                local_timezone = pytz.timezone('Asia/Singapore')  # GMT+8 timezone
+                utc_timestamp = utc_timezone.localize(utc_timestamp)
+                local_timestamp = utc_timestamp.astimezone(local_timezone)
+                formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')  # Format the timestamp as desired
+                message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
+                self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
+        except sqlite3.Error as e:
+            messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
 
 if __name__ == "__main__":
