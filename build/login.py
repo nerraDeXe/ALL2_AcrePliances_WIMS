@@ -8,33 +8,97 @@ import subprocess
 
 
 class Database:
-    def __init__(self, db_name='users.db'):
+    def __init__(self, db_name='AcrePliances.db'):
         self.conn = sqlite3.connect(db_name)
         self.cursor = self.conn.cursor()
         self.create_table()
 
     def create_table(self):
         self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
-            username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('Administrator', 'Supervisor', 'Worker'))
-        )
+            CREATE TABLE IF NOT EXISTS users (
+                USER_REAL_ID INTEGER PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL
+            )
         ''')
 
         self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY,
-            task TEXT NOT NULL,
-            assigned_to TEXT NOT NULL,
-            status TEXT NOT NULL
-    )
-    ''')
+                    CREATE TABLE IF NOT EXISTS roles (
+                        role_id INTEGER PRIMARY KEY,
+                        role_name TEXT NOT NULL UNIQUE
+                    )
+                ''')
+
+        self.cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS tasks (
+                        task_id INTEGER PRIMARY KEY,
+                        task_name TEXT NOT NULL,
+                        task_description TEXT,
+                        assigned_to TEXT NOT NULL,
+                        status TEXT,
+                        deadline DATE,
+                        FOREIGN KEY (assigned_to) REFERENCES users (username)
+                    )
+                ''')
+
+        self.cursor.execute(
+            'CREATE TABLE IF NOT EXISTS Inventory (PRODUCT_REAL_ID INTEGER PRIMARY KEY, date DATE, PRODUCT_NAME TEXT, '
+            'PRODUCT_ID TEXT,'
+            'STOCKS INTEGER, CATEGORY VARCHAR(30), PURCHASE_PRICE FLOAT, '
+            'SELLING_PRICE FLOAT, LOCATION VARCHAR(30), INTERNAL_REFERENCE VARCHAR(30))'
+        )
+
+        self.cursor.execute(
+            'CREATE TABLE IF NOT EXISTS Orders ('
+            'ORDER_ID INTEGER PRIMARY KEY, '
+            'PRODUCT_NAME VARCHAR(20), '
+            'PRODUCT_ID TEXT, '
+            'CATEGORY TEXT, '
+            'QUANTITY INTEGER, '
+            'VENDOR_ID INTEGER, '
+            'DATE date,'
+            'FOREIGN KEY(VENDOR_ID) REFERENCES Vendors(VENDOR_ID))'
+        )
+
+        self.cursor.execute(
+            'CREATE TABLE IF NOT EXISTS Sales_Orders ('
+            'ORDER_ID INTEGER PRIMARY KEY, '
+            'PRODUCT_NAME VARCHAR(20), '
+            'PRODUCT_ID TEXT, '
+            'CATEGORY TEXT, '
+            'QUANTITY INTEGER, '
+            'DATE date,'
+            'STORE_BRANCH TEXT)'
+        )
+
+        self.cursor.execute(
+            'CREATE TABLE IF NOT EXISTS Vendors ('
+            'VENDOR_ID INTEGER PRIMARY KEY, '
+            'NAME VARCHAR(20), '
+            'EMAIL VARCHAR(20), '
+            'PHONE_NUMBER VARCHAR(10), '
+            'COMPANY VARCHAR(20))'
+        )
+
+        self.cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS tasks (
+                        task_id INTEGER PRIMARY KEY,
+                        task_name TEXT NOT NULL,
+                        task_description TEXT,
+                        assigned_to TEXT NOT NULL,
+                        status TEXT,
+                        deadline DATE,
+                        FOREIGN KEY (assigned_to) REFERENCES users (username)
+                    )
+                ''')
+
+
         self.conn.commit()
 
+
     def fetch_user_role(self, username, hashed_password):
-        self.cursor.execute("SELECT role FROM users WHERE username=? AND password=?", (username, hashed_password))
+        self.cursor.execute("SELECT role_id FROM users WHERE username=? AND password=?", (username, hashed_password))
         return self.cursor.fetchone()
 
     def close(self):
