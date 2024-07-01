@@ -98,7 +98,7 @@ class Database:
 
 
     def fetch_user_role(self, username, hashed_password):
-        self.cursor.execute("SELECT role_id FROM users WHERE username=? AND password=?", (username, hashed_password))
+        self.cursor.execute("SELECT role FROM users WHERE username=? AND password=?", (username, hashed_password))
         return self.cursor.fetchone()
 
     def close(self):
