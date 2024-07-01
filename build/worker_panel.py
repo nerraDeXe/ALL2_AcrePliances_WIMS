@@ -17,21 +17,15 @@ from PIL import Image, ImageTk
 import sys
 
 
-
 class WorkerApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect("AcrePliances.db")
         self.cursor = self.connector.cursor()
 
-        try:
-            self.create_tables()
-        except sqlite3.Error as e:
-            mb.showerror("Database Error", f"An error occurred: {e}")
-
         self.root = root
         self.username = username
         self.root.title('ACREPILLANCE')
-        self.root.geometry('1920x1000')
+        self.root.geometry('1600x1000')
         self.root.resizable(0, 0)
 
         self.setup_variables()
@@ -44,64 +38,6 @@ class WorkerApp:
         self.custom_style = ttk.Style()
         self.custom_style.configure('Bold.TButton', font=('Helvetica', 12, 'bold'), background="black")
         self.list_all_inventory()
-
-    def create_tables(self):
-        self.cursor.execute(
-            '''CREATE TABLE IF NOT EXISTS Inventory (
-                PRODUCT_REAL_ID INTEGER PRIMARY KEY,
-                date DATE,
-                PRODUCT_NAME TEXT,
-                PRODUCT_ID TEXT,
-                STOCKS INTEGER,
-                CATEGORY VARCHAR(30),
-                PURCHASE_PRICE FLOAT,
-                SELLING_PRICE FLOAT,
-                LOCATION VARCHAR(30),
-                INTERNAL_REFERENCE VARCHAR(30)
-            )'''
-        )
-
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS roles (
-                role_id INTEGER PRIMARY KEY,
-                role_name TEXT NOT NULL UNIQUE
-            )
-        ''')
-
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                USER_REAL_ID INTEGER PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                role_id INTEGER NOT NULL,
-                FOREIGN KEY (role_id) REFERENCES roles (role_id)
-            )
-        ''')
-
-        roles = [('Administrator',), ('Supervisor',), ('Worker',)]
-        self.cursor.executemany('''
-            INSERT OR IGNORE INTO roles (role_name) VALUES (?)
-        ''', roles)
-
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS task_batches (
-                batch_id INTEGER PRIMARY KEY,
-                description TEXT NOT NULL
-            )
-        ''')
-
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY,
-                task TEXT NOT NULL,
-                assigned_to TEXT NOT NULL,
-                status TEXT NOT NULL,
-                eta DATE,
-                batch_id INTEGER,
-                FOREIGN KEY (batch_id) REFERENCES task_batches(batch_id)
-            )
-        ''')
-
         self.connector.commit()
 
     def setup_variables(self):
@@ -182,17 +118,13 @@ class WorkerApp:
         self.setup_button_widgets()
         self.setup_inventory_button_widgets()
         self.setup_table()
-        self.setup_user_table()
-        # self.setup_tasks_button_widgets()
-        # self.setup_tasks_table()
-        self.setup_tasks2_button_widgets()
-        self.setup_tasks2_entry_widgets()
-        self.setup_tasks2_table()
         # self.load_dashboard_image()
         # self.setup_notification_frame()
 
     def open_task_status_panel(self):
+        root.withdraw()
         subprocess.run(["python", "Task Status Update.py"])
+        root.deiconify()
 
     def setup_data_entry_widgets(self):
         # Setup Data Entry Widgets
@@ -296,11 +228,6 @@ class WorkerApp:
 
     def setup_inventory_button_widgets(self):
 
-        CTkButton(self.button_frame_inventory, text='Add Inventory', command=self.add_inventory, width=275,
-                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
-                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
-                  ).place(x=75, y=80, anchor=W)
-
         CTkButton(self.button_frame_inventory, text='Delete Inventory', command=self.remove_inventory, width=275,
                   height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
                   font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
@@ -320,30 +247,6 @@ class WorkerApp:
                   border_width=0, fg_color='red', border_color='black', text_color='white',
                   font=('Microsoft YaHei UI Light', 16), corner_radius=15, hover_color='orange'
                   ).place(x=160, y=500, anchor=W)
-
-    def setup_tasks2_button_widgets(self):
-        ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20,
-                   style='Bold.TButton',
-                   ).place(x=40, y=35, width=200, height=50)
-        ttk.Button(self.button_frame_tasks2, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=630, width=60, height=30)
-
-    def setup_tasks2_entry_widgets(self):
-
-        self.status_var = StringVar()
-        self.status_menu = ttk.Combobox(self.task_assignment_frame2, textvariable=self.status_var, state='readonly',
-                                        values=["Incomplete", "In Progress", "Blocked", "Complete"])
-        self.status_menu.place(x=130, y=80)
-
-    def setup_order_button_widgets(self):
-        ttk.Button(self.order_frame, text='Add Order', command=self.add_user, width=20, style='Bold.TButton',
-                   ).place(x=40, y=35, width=200, height=50)
-
-        ttk.Button(self.order_frame, text='Complete Order', width=20, style='Bold.TButton',
-                   command=self.delete_user).place(x=40, y=135, width=200, height=50)
-
-        ttk.Button(self.order_frame, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=335, width=60, height=30)
 
     def setup_table(self):
         self.table = ttk.Treeview(self.table_frame, selectmode=BROWSE,
@@ -383,45 +286,6 @@ class WorkerApp:
 
         self.table.place(relx=0, rely=0, relheight=1, relwidth=1)
 
-    def setup_user_table(self):
-        self.user_table = ttk.Treeview(self.table_frame2, selectmode=BROWSE,
-                                       columns=('ID', 'Username', 'Role'))
-
-        Y_Scroller = Scrollbar(self.user_table, orient=VERTICAL, command=self.user_table.yview)
-        Y_Scroller.pack(side=RIGHT, fill=Y)
-
-        self.user_table.config(yscrollcommand=Y_Scroller.set)
-
-        self.user_table.heading('ID', text='ID', anchor=CENTER)
-        self.user_table.heading('Username', text='Username', anchor=CENTER)
-        self.user_table.heading('Role', text='Role', anchor=CENTER)
-
-        self.user_table.column('#0', width=0, stretch=NO)
-        self.user_table.column('#1', width=50, stretch=NO)
-        self.user_table.column('#2', width=200, stretch=NO)
-        self.user_table.column('#3', width=150, stretch=NO)
-
-        self.user_table.place(relx=0, rely=0, relheight=1, relwidth=1)
-
-    def setup_tasks2_table(self):
-        self.task2_table = ttk.Treeview(self.table_frame4, selectmode=BROWSE,
-                                        columns=('ID', 'Task', 'Status'))
-
-        Y_Scroller = Scrollbar(self.task2_table, orient=VERTICAL, command=self.task2_table.yview)
-        Y_Scroller.pack(side=RIGHT, fill=Y)
-
-        self.user_table.config(yscrollcommand=Y_Scroller.set)
-
-        self.task2_table.heading('ID', text='ID', anchor=CENTER)
-        self.task2_table.heading('Task', text='Task', anchor=CENTER)
-        self.task2_table.heading('Status', text='Status', anchor=CENTER)
-
-        self.task2_table.column('#0', width=0, stretch=NO)
-        self.task2_table.column('#1', width=20, stretch=NO)
-        self.task2_table.column('#2', width=350, stretch=NO)
-
-        self.task2_table.place(relx=0, rely=0, relheight=1, relwidth=1)
-
     # Panel's buttons function
     def open_inventory_panel(self):
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
@@ -432,18 +296,13 @@ class WorkerApp:
         self.hide_move_product_widgets()
 
     def close_subpanel(self):
-        self.button_frame_users.place_forget()
         self.button_frame.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame_inventory.place_forget()
-        self.button_frame_tasks.place_forget()
-        self.button_frame_tasks2.place_forget()
         self.table_frame.place_forget()
         self.table_frame2.place_forget()
         self.table_frame3.place_forget()
         self.table_frame4.place_forget()
         self.data_entry_frame.place_forget()
-        self.task_assignment_frame.place_forget()
-        self.task_assignment_frame2.place_forget()
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
         self.notification_frame()
         self.show_bar_chart()
@@ -550,50 +409,6 @@ class WorkerApp:
                                   bg='red', command=self.cancel_update)
 
             self.add_btn.place(x=420, y=220)
-
-    def add_inventory(self):
-        # Generate product ID based on category
-        category_prefix = self.CATEGORY.get()[0].upper()  # Get the first letter of the category
-        count = \
-            self.cursor.execute('SELECT COUNT(*) FROM Inventory WHERE CATEGORY=?', (self.CATEGORY.get(),)).fetchone()[0]
-        product_id = f"{category_prefix}{count + 1:03d}"  # Format product ID with category prefix and padded number
-
-        location_prefix = self.LOCATION.get()[:3].upper()  # Get the first 3 letters of the location
-        product_internal_reference = f"WH-{location_prefix}-{product_id}"
-
-        try:
-            if (
-                    not self.date.get_date() or not self.date.get_date() or not self.STOCKS.get() or not self.CATEGORY.get() or not
-            self.PURCHASE_PRICE.get() or not self.SELLING_PRICE.get() or not self.LOCATION.get()):
-                mb.showerror('Fields empty!',
-                             "Please fill all missing fields before adding.")
-            else:
-                # Insert data into database
-                self.cursor.execute(
-                    'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE) '
-                    'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, LTRIM(RTRIM(?)), ?)',
-                    (
-                        self.date.get_date(), self.PRODUCT_NAME.get(), product_id, self.STOCKS.get(),
-                        self.CATEGORY.get(),
-                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
-                        product_internal_reference
-                    )
-                )
-                self.connector.commit()
-
-                mb.showinfo('Success', 'Inventory added successfully')
-                self.list_all_inventory()
-
-                # Generate PDF report
-                self.generate_pdf_report(
-                    self.PRODUCT_NAME.get(), product_id, self.STOCKS.get(), self.CATEGORY.get(),
-                    self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
-                    self.date.get_date(), 'Add'
-                )
-
-                self.clear_fields()
-        except:
-            mb.showerror("Error", "Inappropriate values.")
 
     def update_record(self):
         global new_stock_existing
@@ -750,46 +565,6 @@ class WorkerApp:
         self.hide_data_entry_widgets()
         self.setup_data_entry_widgets()
         self.clear_fields()
-
-    def open_task2_panel(self):
-        self.button_frame.place_forget()
-        self.chart_frame.place_forget()
-        self.table_frame4.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        self.button_frame_tasks2.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.task_assignment_frame2.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
-        self.load_tasks2()
-
-    def load_tasks2(self):
-        for i in self.task2_table.get_children():
-            self.task2_table.delete(i)
-
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, task, status FROM tasks WHERE assigned_to=?", (self.username,))
-        for task in cursor.fetchall():
-            self.task2_table.insert("", "end", values=(task[0], task[1], task[2]), iid=task[0])
-        conn.close()
-
-    def update_status(self):
-        selected_item = self.task2_table.focus()
-        new_status = self.status_var.get()
-
-        if selected_item:
-            print(f"Selected Item: {selected_item}, New Status: {new_status}")
-            if new_status:
-                try:
-                    conn = sqlite3.connect('users.db')
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE tasks SET status=? WHERE id=?", (new_status, selected_item))
-                    conn.commit()
-                    conn.close()
-                    self.load_tasks2()
-                except sqlite3.Error as e:
-                    mb.showerror("Database Error", f"Error updating task status: {e}")
-            else:
-                mb.showwarning("Input Error", "Please select a status to update.")
-        else:
-            mb.showwarning("Selection Error", "Please select a task to update.")
 
     def add_incoming(self):
         category_prefix = self.CATEGORY.get()[0].upper()  # Get the first letter of the category
