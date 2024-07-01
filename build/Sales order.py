@@ -78,7 +78,7 @@ class SalesApp:
                                            font=("Helvetica", 20, 'bold'),
                                            text_color='black')
         order_details_label.pack(anchor=tk.W, pady=10)
-        
+
         self.sales_order_tree = ttk.Treeview(self.order_frame, columns=(
             "ID", "Product Name", "Product ID", "Category", "Quantity", "Date", "Store Branch"), show='headings')
         self.sales_order_tree.heading("ID", text="ID")
@@ -112,7 +112,6 @@ class SalesApp:
         self.inventory_tree.column("PRODUCT_REAL_ID", width=0, stretch=tk.NO)
 
     def close_subpanel(self):
-        subprocess.Popen(["python", "admin_panel.py"])  # Assuming this line opens another script or window
         self.root.destroy()  # Close the main window and all associated frames
 
     def load_sales_order_data(self):
