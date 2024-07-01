@@ -14,13 +14,13 @@ class PurchaseApp:
         self.cursor = self.connector.cursor()
 
         self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Orders ('
-            'ORDER_ID INTEGER PRIMARY KEY, '
+            'CREATE TABLE IF NOT EXISTS Purchase_Orders ('
+            'PURCHASE_ORDER_ID INTEGER PRIMARY KEY AUTOINCREMENT, '
             'PRODUCT_NAME VARCHAR(20), '
-            'PRODUCT_ID TEXT, '
             'CATEGORY TEXT, '
             'QUANTITY INTEGER, '
             'VENDOR_ID INTEGER, '
+            'DATETIME DATETIME, '
             'FOREIGN KEY(VENDOR_ID) REFERENCES Vendors(VENDOR_ID))'
         )
 
@@ -28,26 +28,6 @@ class PurchaseApp:
 
         self.acre_connector = sqlite3.connect('AcrePliances.db')
         self.acre_cursor = self.acre_connector.cursor()
-        self.acre_cursor.execute(
-            'CREATE TABLE IF NOT EXISTS Inventory ('
-            'PRODUCT_REAL_ID INTEGER PRIMARY KEY, '
-            'date DATE, '
-            'PRODUCT_NAME TEXT, '
-            'PRODUCT_ID TEXT, '
-            'STOCKS INTEGER, '
-            'CATEGORY VARCHAR(30), '
-            'PURCHASE_PRICE FLOAT, '
-            'SELLING_PRICE FLOAT, '
-            'LOCATION VARCHAR(30), '
-            'INTERNAL_REFERENCE VARCHAR(30))'
-        )
-
-        self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Notifications ('
-            'NOTIFICATION_ID INTEGER PRIMARY KEY AUTOINCREMENT, '
-            'DESCRIPTION TEXT, '
-            'TIMESTAMP DATETIME DEFAULT CURRENT_TIMESTAMP)'
-        )
 
         self.acre_connector.commit()
 
@@ -120,14 +100,22 @@ class PurchaseApp:
         order_details_label.pack(anchor=tk.W, pady=10)
 
         self.order_tree = ttk.Treeview(self.order_frame, columns=(
-            "ID", "Product Name", "Product ID", "Category", "Quantity", "Vendor ID"), show='headings')
+            "ID", "Product Name", "Category", "Quantity", "Vendor ID", "Date"), show='headings')
         self.order_tree.heading("ID", text="ID")
         self.order_tree.heading("Product Name", text="Product Name")
-        self.order_tree.heading("Product ID", text="Product ID")
         self.order_tree.heading("Category", text="Category")
         self.order_tree.heading("Quantity", text="Quantity")
         self.order_tree.heading("Vendor ID", text="Vendor ID")
-        self.order_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.order_tree.heading("Date", text="Date")
+
+        self.order_tree.column("ID", width=100, stretch=tk.NO)
+        self.order_tree.column("Product Name", width=300, stretch=tk.NO)
+        self.order_tree.column("Category", width=150, stretch=tk.NO)
+        self.order_tree.column("Quantity", width=100, stretch=tk.NO)
+        self.order_tree.column("Vendor ID", width=100, stretch=tk.NO)
+        self.order_tree.column("Date", width=298, stretch=tk.NO)
+
+        self.order_tree.pack(fill=tk.BOTH, expand=False, padx=10, pady=10)
 
         vendor_details_label = ctk.CTkLabel(self.vendor_frame, text="Vendor Details:", font=("Helvetica", 20, 'bold'),
                                             text_color='black')
@@ -143,13 +131,12 @@ class PurchaseApp:
         self.vendor_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     def close_subpanel(self):
-        subprocess.Popen(["python", "admin_panel.py"])  # Assuming this line opens another script or window
-        self.root.destroy()  # Close the main window and all associated frames
+        self.root.destroy()
 
     def load_order_data(self):
         self.order_tree.delete(*self.order_tree.get_children())
 
-        self.cursor.execute('SELECT * FROM Orders')
+        self.cursor.execute('SELECT * FROM Purchase_Orders')
         rows = self.cursor.fetchall()
 
         for row in rows:
@@ -195,47 +182,43 @@ class PurchaseApp:
         vendor_id_frame.pack(pady=5, padx=10, fill=tk.X)
         vendor_id_label = ctk.CTkLabel(vendor_id_frame, text="Vendor ID:")
         vendor_id_label.pack(side=tk.LEFT)
-        self.vendor_id_entry = ctk.CTkEntry(vendor_id_frame)
-        self.vendor_id_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.vendor_id_var = tk.StringVar()
+        self.vendor_id_menu = ttk.Combobox(vendor_id_frame, textvariable=self.vendor_id_var,
+                                           values=self.get_vendor_ids())
+        self.vendor_id_menu.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        # Product ID
-        product_id_frame = ctk.CTkFrame(self.extra_window)
-        product_id_frame.pack(pady=5, padx=10, fill=tk.X)
-        product_id_label = ctk.CTkLabel(product_id_frame, text="Product ID:")
-        product_id_label.pack(side=tk.LEFT)
-        self.product_id_entry = ctk.CTkEntry(product_id_frame)
-        self.product_id_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
-
-        add_button = ctk.CTkButton(self.extra_window, text="Add Purchase Order", command=self.add_purchase_order)
+        # Add Button
+        add_button = ctk.CTkButton(self.extra_window, text="Add Order", command=self.add_purchase_order)
         add_button.pack(pady=20)
 
-    #################################### Purchase Order into database function #############################################
-    def load_order_data(self):
-        self.order_tree.delete(*self.order_tree.get_children())
-
-        self.cursor.execute('SELECT * FROM Orders')
-        rows = self.cursor.fetchall()
-
-        for row in rows:
-            self.order_tree.insert('', 'end', values=row)
-
     def add_purchase_order(self):
-        name = self.name_entry.get()
-        product_id = self.product_id_entry.get()
+        product_name = self.name_entry.get()
         category = self.category_var.get()
-        quantity = self.quantity_entry.get()
-        vendor_id = self.vendor_id_entry.get()
+        quantity = int(self.quantity_entry.get())
+        vendor_id = int(self.vendor_id_var.get())
+        dt = datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+
+        if not all([product_name, category, quantity, vendor_id]):
+            messagebox.showerror("Error", "Please fill all fields")
+            return
 
         self.cursor.execute(
-            'INSERT INTO Orders (PRODUCT_NAME, PRODUCT_ID, CATEGORY, QUANTITY, VENDOR_ID) VALUES (?, ?, ?, ?, ?)',
-            (name, product_id, category, quantity, vendor_id))
+            'INSERT INTO Purchase_Orders (PRODUCT_NAME, CATEGORY, QUANTITY, VENDOR_ID, DATETIME) VALUES (?, ?, ?, ?, ?)',
+            (product_name, category, quantity, vendor_id, dt)
+        )
         self.connector.commit()
-
-        self.load_order_data()
         self.extra_window.destroy()
-        self.add_notification(f"Added order for {name}")
+        self.load_order_data()
+        self.add_notification(f"ADDED PRODUCT NAME: {product_name} TO PURCHASE ORDER")
 
-    def load_vendor_data(self):
+        messagebox.showinfo("Success", "Purchase Order added successfully!")
+
+    def get_vendor_ids(self):
+        self.cursor.execute('SELECT VENDOR_ID FROM Vendors')
+        rows = self.cursor.fetchall()
+        return [row[0] for row in rows]
+
+    def load_vendors_data(self):
         self.vendor_tree.delete(*self.vendor_tree.get_children())
 
         self.cursor.execute('SELECT * FROM Vendors')
@@ -249,88 +232,82 @@ class PurchaseApp:
         if not selected_item:
             messagebox.showerror("Error", "Please select an order to edit.")
             return
-        order_id = self.order_tree.item(selected_item)['values'][0]
 
-        self.edit_window = ctk.CTkToplevel(self.root)
-        self.edit_window.title('Edit Purchase Order')
-        self.edit_window.geometry('600x600')
-        title_label = ctk.CTkLabel(self.edit_window, text="EDIT SALES ORDER", font=("Helvetica", 20, 'bold'))
+        order = self.order_tree.item(selected_item, 'values')
+        self.selected_order_id = order[0]  # Store the selected order ID
+
+        self.extra_window = ctk.CTkToplevel(self.root)
+        self.extra_window.title('Edit Purchase Order')
+        self.extra_window.geometry('600x600')
+        title_label = ctk.CTkLabel(self.extra_window, text="EDIT PURCHASE ORDER", font=("Helvetica", 20, 'bold'))
         title_label.pack(pady=20)
-        self.edit_window.attributes('-topmost', True)
+        self.extra_window.attributes('-topmost', True)
 
         # Product Name
-        name_frame = ctk.CTkFrame(self.edit_window)
+        name_frame = ctk.CTkFrame(self.extra_window)
         name_frame.pack(pady=5, padx=10, fill=tk.X)
         name_label = ctk.CTkLabel(name_frame, text="Product Name:")
         name_label.pack(side=tk.LEFT)
-        self.edit_name_entry = ctk.CTkEntry(name_frame)
-        self.edit_name_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.name_entry = ctk.CTkEntry(name_frame)
+        self.name_entry.insert(0, order[1])
+        self.name_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Category
-        category_frame = ctk.CTkFrame(self.edit_window)
+        category_frame = ctk.CTkFrame(self.extra_window)
         category_frame.pack(pady=5, padx=10, fill=tk.X)
         category_label = ctk.CTkLabel(category_frame, text="Category:")
         category_label.pack(side=tk.LEFT)
-        self.edit_category_var = tk.StringVar()
-        self.edit_category_menu = ttk.Combobox(category_frame, textvariable=self.edit_category_var,
-                                               values=["Electronics", "Appliances", "Personal Care", "Homeware",
-                                                       "Furniture"])
-        self.edit_category_menu.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.category_var = tk.StringVar(value=order[2])
+        self.category_menu = ttk.Combobox(category_frame, textvariable=self.category_var,
+                                          values=["Electronics", "Appliances", "Personal Care", "Homeware",
+                                                  "Furniture"])
+        self.category_menu.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Quantity
-        quantity_frame = ctk.CTkFrame(self.edit_window)
+        quantity_frame = ctk.CTkFrame(self.extra_window)
         quantity_frame.pack(pady=5, padx=10, fill=tk.X)
         quantity_label = ctk.CTkLabel(quantity_frame, text="Quantity:")
         quantity_label.pack(side=tk.LEFT)
-        self.edit_quantity_entry = ctk.CTkEntry(quantity_frame)
-        self.edit_quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.quantity_entry = ctk.CTkEntry(quantity_frame)
+        self.quantity_entry.insert(0, order[3])
+        self.quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Vendor ID
-        vendor_id_frame = ctk.CTkFrame(self.edit_window)
+        vendor_id_frame = ctk.CTkFrame(self.extra_window)
         vendor_id_frame.pack(pady=5, padx=10, fill=tk.X)
         vendor_id_label = ctk.CTkLabel(vendor_id_frame, text="Vendor ID:")
         vendor_id_label.pack(side=tk.LEFT)
-        self.edit_vendor_id_entry = ctk.CTkEntry(vendor_id_frame)
-        self.edit_vendor_id_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.vendor_id_var = tk.StringVar(value=order[4])
+        self.vendor_id_menu = ttk.Combobox(vendor_id_frame, textvariable=self.vendor_id_var,
+                                           values=self.get_vendor_ids())
+        self.vendor_id_menu.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        # Product ID
-        product_id_frame = ctk.CTkFrame(self.edit_window)
-        product_id_frame.pack(pady=5, padx=10, fill=tk.X)
-        product_id_label = ctk.CTkLabel(product_id_frame, text="Product ID:")
-        product_id_label.pack(side=tk.LEFT)
-        self.edit_product_id_entry = ctk.CTkEntry(product_id_frame)
-        self.edit_product_id_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        # Save Button
+        save_button = ctk.CTkButton(self.extra_window, text="Save Changes", command=self.edit_order)
+        save_button.pack(pady=20)
 
-        # Submit button
-        submit_button = ctk.CTkButton(self.edit_window, text="Update Order",
-                                      command=lambda: self.update_order(order_id))
-        submit_button.pack(pady=20)
+    def edit_order(self):
+        product_name = self.name_entry.get()
+        category = self.category_var.get()
+        quantity = int(self.quantity_entry.get())
+        vendor_id = int(self.vendor_id_var.get())
+        dt = datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
 
-        self.cursor.execute('SELECT * FROM Orders WHERE ORDER_ID = ?', (order_id,))
-        order = self.cursor.fetchone()
+        if not all([product_name, category, quantity, vendor_id]):
+            messagebox.showerror("Error", "Please fill all fields")
+            return
 
-        self.edit_name_entry.insert(0, order[1])
-        self.edit_product_id_entry.insert(0, order[2])
-        self.edit_category_var.set(order[3])
-        self.edit_quantity_entry.insert(0, order[4])
-        self.edit_vendor_id_entry.insert(0, order[5])
-
-    def update_order(self, order_id):
-        name = self.edit_name_entry.get()
-        product_id = self.edit_product_id_entry.get()
-        category = self.edit_category_var.get()
-        quantity = self.edit_quantity_entry.get()
-        vendor_id = self.edit_vendor_id_entry.get()
-
-        self.cursor.execute('''
-        UPDATE Orders SET PRODUCT_NAME = ?, PRODUCT_ID = ?, CATEGORY = ?, QUANTITY = ?, VENDOR_ID = ?
-        WHERE ORDER_ID = ?
-        ''', (name, product_id, category, quantity, vendor_id, order_id))
+        self.cursor.execute(
+            'UPDATE Purchase_Orders SET PRODUCT_NAME = ?, CATEGORY = ?, QUANTITY = ?, VENDOR_ID = ?, DATETIME = ? '
+            'WHERE PURCHASE_ORDER_ID = ?',
+            (product_name, category, quantity, vendor_id, dt, self.selected_order_id)
+        )
         self.connector.commit()
-
+        self.extra_window.destroy()
         self.load_order_data()
-        self.edit_window.destroy()
-        self.add_notification(f"Updated order ID {order_id} for {name}")
+        self.add_notification(f"EDITED PRODUCT NAME: {product_name} FROM PURCHASE ORDER")
+
+        messagebox.showinfo("Success", "Purchase Order updated successfully!")
 
     def delete_order(self):
         selected_item = self.order_tree.selection()
@@ -338,91 +315,73 @@ class PurchaseApp:
             messagebox.showerror("Error", "Please select an order to delete.")
             return
 
-        order_id = self.order_tree.item(selected_item)['values'][0]
+        purchase_order_id = self.order_tree.item(selected_item)['values'][0]
 
         # Ask for confirmation
-        confirm = messagebox.askokcancel("Confirm Deletion", f"Are you sure you want to delete order ID {order_id}?")
+        confirm = messagebox.askokcancel("Confirm Deletion",
+                                         f"Are you sure you want to delete order ID {purchase_order_id}?")
 
         if confirm:
-            self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID = ?', (order_id,))
+            self.cursor.execute('DELETE FROM Purchase_Orders WHERE PURCHASE_ORDER_ID = ?', (purchase_order_id,))
             self.connector.commit()
 
             self.load_order_data()
-            self.add_notification(f"Deleted order ID {order_id}")
+            self.add_notification(f"DELETED ORDER ID: {purchase_order_id} FROM PURCHASE ORDER")
 
-################################## Complete Order functions into database ##############################################
-    def complete_order(self, order):
-        product_id = order[2]
-        name = order[1]
-        category = order[3]
-        quantity = order[4]
-        location = self.location_entry.get()
-        purchase_price = self.purchase_price_entry.get()
-        selling_price = self.selling_price_entry.get()
-        internal_reference = self.internal_reference_entry.get()
-        current_date = date.today().strftime("%Y-%m-%d")
-
-        self.acre_cursor.execute('''
-        INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (current_date, name, product_id, quantity, category, purchase_price, selling_price, location,
-              internal_reference))
-        self.acre_connector.commit()
-
-        self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID = ?', (order[0],))
-        self.connector.commit()
-
-        self.load_order_data()
-        self.complete_window.destroy()
-        self.add_notification(f"Completed order for {name}")
-
-    ########################## Display vendor's data #######################################################################
-    def load_vendors_data(self):
-        self.vendor_tree.delete(*self.vendor_tree.get_children())
-
-        self.cursor.execute('SELECT * FROM Vendors')
-        rows = self.cursor.fetchall()
-
-        for row in rows:
-            self.vendor_tree.insert('', 'end', values=row)
-
-    def clear_order_entries(self):
-        self.name_entry.delete(0, tk.END)
-        self.category_menu.set('')
-        self.quantity_entry.delete(0, tk.END)
-        self.vendor_id_menu.set('')
-
-    ######################################## COMPLETE ORDER FUNCTION ###################################################
     def complete_order_window(self):
         selected_item = self.order_tree.selection()
         if not selected_item:
-            messagebox.showwarning('Error', 'Please select an order to complete.')
+            messagebox.showerror("Error", "Please select an order to complete.")
             return
 
-        order_id = self.order_tree.item(selected_item)['values'][0]
-        self.extra_window = ctk.CTkToplevel(self.root)
-        self.extra_window.title('Complete Order')
-        self.extra_window.geometry('600x600')
-
-        title_label = ctk.CTkLabel(self.extra_window, text="COMPLETE ORDER", font=("Helvetica", 14))
+        order = self.order_tree.item(selected_item, 'values')
+        self.complete_window = ctk.CTkToplevel(self.root)
+        self.complete_window.title('Complete Order')
+        self.complete_window.geometry('600x600')
+        title_label = ctk.CTkLabel(self.complete_window, text="COMPLETE ORDER", font=("Helvetica", 20, 'bold'))
         title_label.pack(pady=20)
+        self.complete_window.attributes('-topmost', True)
 
-        self.cursor.execute('SELECT * FROM Orders WHERE ORDER_ID=?', (order_id,))
-        order = self.cursor.fetchone()
+        # Add form fields for Inventory
+        # Product Name
+        name_frame = ctk.CTkFrame(self.complete_window)
+        name_frame.pack(pady=5, padx=10, fill=tk.X)
+        name_label = ctk.CTkLabel(name_frame, text="Product Name:")
+        name_label.pack(side=tk.LEFT)
+        self.name_entry = ctk.CTkEntry(name_frame)
+        self.name_entry.insert(0, order[1])
+        self.name_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        self.complete_order_id = order[0]
+        # Category
+        category_frame = ctk.CTkFrame(self.complete_window)
+        category_frame.pack(pady=5, padx=10, fill=tk.X)
+        category_label = ctk.CTkLabel(category_frame, text="Category:")
+        category_label.pack(side=tk.LEFT)
+        self.category_var = tk.StringVar(value=order[3])
+        self.category_menu = ttk.Combobox(category_frame, textvariable=self.category_var,
+                                          values=["Electronics", "Appliances", "Personal Care", "Homeware",
+                                                  "Furniture"])
+        self.category_menu.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        # Date
-        date_frame = ctk.CTkFrame(self.extra_window)
-        date_frame.pack(pady=5, padx=10, fill=tk.X)
-        date_label = ctk.CTkLabel(date_frame, text="Date:")
-        date_label.pack(side=tk.LEFT)
-        self.date_entry = ctk.CTkEntry(date_frame)
-        self.date_entry.insert(0, date.today().strftime("%Y-%m-%d"))
-        self.date_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        # Ordered Quantity
+        quantity_frame = ctk.CTkFrame(self.complete_window)
+        quantity_frame.pack(pady=5, padx=10, fill=tk.X)
+        quantity_label = ctk.CTkLabel(quantity_frame, text="Ordered Quantity:")
+        quantity_label.pack(side=tk.LEFT)
+        self.quantity_entry = ctk.CTkEntry(quantity_frame)
+        self.quantity_entry.insert(0, order[4])
+        self.quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+
+        # Received Quantity
+        received_quantity_frame = ctk.CTkFrame(self.complete_window)
+        received_quantity_frame.pack(pady=5, padx=10, fill=tk.X)
+        received_quantity_label = ctk.CTkLabel(received_quantity_frame, text="Received Quantity:")
+        received_quantity_label.pack(side=tk.LEFT)
+        self.received_quantity_entry = ctk.CTkEntry(received_quantity_frame)
+        self.received_quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Purchase Price
-        purchase_price_frame = ctk.CTkFrame(self.extra_window)
+        purchase_price_frame = ctk.CTkFrame(self.complete_window)
         purchase_price_frame.pack(pady=5, padx=10, fill=tk.X)
         purchase_price_label = ctk.CTkLabel(purchase_price_frame, text="Purchase Price:")
         purchase_price_label.pack(side=tk.LEFT)
@@ -430,78 +389,55 @@ class PurchaseApp:
         self.purchase_price_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Selling Price
-        selling_price_frame = ctk.CTkFrame(self.extra_window)
+        selling_price_frame = ctk.CTkFrame(self.complete_window)
         selling_price_frame.pack(pady=5, padx=10, fill=tk.X)
         selling_price_label = ctk.CTkLabel(selling_price_frame, text="Selling Price:")
         selling_price_label.pack(side=tk.LEFT)
         self.selling_price_entry = ctk.CTkEntry(selling_price_frame)
         self.selling_price_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        complete_button = ctk.CTkButton(self.extra_window, text="Complete Order", command=self.complete_order)
-        complete_button.pack(pady=10)
+        # Complete Button
+        complete_button = ctk.CTkButton(self.complete_window, text="Complete Order",
+                                        command=lambda: self.complete_order(order))
+        complete_button.pack(pady=20)
 
-    def complete_order(self):
-        order_id = self.complete_order_id
-        date = self.date_entry.get()
+    def complete_order(self, order):
+        # Ensure product_id is formatted correctly
+        name = order[1]
+        product_id = f'PT00{order[0]}'
+        category = order[2]
+        quantity = order[3]
         purchase_price = self.purchase_price_entry.get()
         selling_price = self.selling_price_entry.get()
-
-        try:
-            purchase_price = float(purchase_price)
-            selling_price = float(selling_price)
-        except ValueError:
-            messagebox.showwarning('Error', 'Please enter valid prices.')
-            return
-
-        self.cursor.execute('SELECT * FROM Orders WHERE ORDER_ID=?', (order_id,))
-        order = self.cursor.fetchone()
-
-        product_name = order[1]
-        product_id = order[2]
-        category = order[3]
-        quantity = order[4]
-
-        location = 'Receiving Area'
-        location_prefix = 'REC'
+        location = 'Staging Area'
+        location_prefix = 'Stage'
         internal_reference = f"WH-{location_prefix}-{product_id}"
+        current_date = date.today().strftime("%Y-%m-%d")
 
-        # Insert into Inventory table
-        try:
-            self.acre_cursor.execute(
-                'INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, '
-                'LOCATION, INTERNAL_REFERENCE) '
-                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (date, product_name, product_id, quantity, category, purchase_price, selling_price, location,
-                 internal_reference)
-            )
-            self.acre_connector.commit()
+        # Insert data into the Inventory table
+        self.acre_cursor.execute('''
+            INSERT INTO Inventory  (PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, 
+            LOCATION, INTERNAL_REFERENCE, date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (current_date, name, product_id, quantity, category, purchase_price, selling_price, location,
+              internal_reference))
+        self.acre_connector.commit()
 
-            # Delete from Orders table
-            self.cursor.execute('DELETE FROM Orders WHERE ORDER_ID=?', (order_id,))
-            self.connector.commit()
+        # Delete the completed order from Purchase_Orders table
+        self.cursor.execute('DELETE FROM Purchase_Orders WHERE PURCHASE_ORDER_ID = ?', (order[0],))
+        self.connector.commit()
 
-            # Load order data (if this updates UI or data elsewhere)
-            self.load_order_data()
+        # Refresh the order data and close the window
+        self.load_order_data()
+        self.complete_window.destroy()
 
-            # Show success message
-            messagebox.showinfo('Success', 'Order completed and transferred successfully!')
+        # Add a notification about the completed order
+        self.add_notification(f"Completed order for {name}")
 
-            # Close extra window if needed
-            self.extra_window.destroy()
-
-            # Add notification
-            notification_description = f"Order for {product_name} (ID: {order_id}) completed and transferred to {location}."
-            self.add_notification(notification_description)
-
-        except sqlite3.Error as e:
-            messagebox.showerror('Error', f'Error completing order: {str(e)}')
-
-    ########################NOTIFICAITON FUNCTIONS######################################################################
-
+    ############################################ NOTIFICATION FUNCTIONS#################################################
     def add_notification(self, description):
         self.cursor.execute('INSERT INTO Notifications (DESCRIPTION) VALUES (?)', (description,))
         self.connector.commit()
-        self.load_notifications()
 
     def show_notifications_window(self):
         notification_window = ctk.CTkToplevel(self.root)
@@ -577,7 +513,7 @@ class PurchaseApp:
             messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     root = ctk.CTk()
-    app = PurchaseApp(root, "Admin")
+    app = PurchaseApp(root, username="Admin")  # Pass the username here
     root.mainloop()
