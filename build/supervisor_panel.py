@@ -68,14 +68,6 @@ class SupervisorApp:
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.15, relwidth=0.22)
         self.button_frame_inventory.place_forget()
 
-        self.button_frame_tasks = Frame(self.root, bg='#9C0014')
-        self.button_frame_tasks.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.button_frame_tasks.place_forget()
-
-        self.button_frame_tasks2 = Frame(self.root)
-        self.button_frame_tasks2.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.button_frame_tasks2.place_forget()
-
         self.table_frame = Frame(self.root)
         self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
         self.table_frame.place_forget()
@@ -97,16 +89,6 @@ class SupervisorApp:
         self.data_entry_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.30)
         self.data_entry_frame.place_forget()
 
-        self.task_assignment_frame = Frame(self.root)
-        self.task_assignment_frame.pack()
-        self.task_assignment_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
-        self.task_assignment_frame.place_forget()
-
-        self.task_assignment_frame2 = Frame(self.root)
-        self.task_assignment_frame2.pack()
-        self.task_assignment_frame2.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
-        self.task_assignment_frame2.place_forget()
-
         self.chart_frame = Frame(self.root)
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.65)
         self.show_bar_chart()
@@ -117,12 +99,6 @@ class SupervisorApp:
         self.setup_button_widgets()
         self.setup_inventory_button_widgets()
         self.setup_table()
-        self.setup_tasks_button_widgets()
-        self.setup_tasks_entry_widgets()
-        self.setup_tasks_table()
-        self.setup_tasks2_button_widgets()
-        self.setup_tasks2_entry_widgets()
-        self.setup_tasks2_table()
         # self.load_dashboard_image()
 
     def open_task_assignment_panel(self):
@@ -231,11 +207,6 @@ class SupervisorApp:
     # Inventory Management Buttons
     def setup_inventory_button_widgets(self):
 
-        CTkButton(self.button_frame_inventory, text='Add Inventory', command=self.add_inventory, width=275,
-                  height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
-                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
-                  ).place(x=75, y=80, anchor=W)
-
         CTkButton(self.button_frame_inventory, text='Delete Inventory', command=self.remove_inventory, width=275,
                   height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
                   font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
@@ -255,44 +226,6 @@ class SupervisorApp:
                   border_width=0, fg_color='red', border_color='black', text_color='white',
                   font=('Microsoft YaHei UI Light', 16), corner_radius=15, hover_color='orange'
                   ).place(x=160, y=500, anchor=W)
-
-    # Task Management Buttons
-    def setup_tasks_button_widgets(self):
-        ttk.Button(self.button_frame_tasks, text='Assign Task', command=self.assign_task, width=20,
-                   style='Bold.TButton',
-                   ).place(x=40, y=35, width=200, height=50)
-        ttk.Button(self.button_frame_tasks, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=630, width=60, height=30)
-
-    # Task Management Entry
-    def setup_tasks_entry_widgets(self):
-
-        self.task_entry_label = ttk.Label(self.task_assignment_frame, text='Task:', font=('Gill Sans MT', 13))
-        self.task_entry_label.place(x=130, y=30)
-        self.task_entry = ttk.Entry(self.task_assignment_frame, font=('Gill Sans MT', 13), width=20)
-        self.task_entry.place(x=300, y=30)
-
-        self.worker_label = ttk.Label(self.task_assignment_frame, text='Assign to Worker:', font=('Gill Sans MT', 13))
-        self.worker_label.place(x=130, y=80)
-        self.worker_entry = ttk.Entry(self.task_assignment_frame, font=('Gill Sans MT', 13), width=20)
-        self.worker_entry.place(x=300, y=80)
-
-        self.assign_button = ttk.Button(self.task_assignment_frame, text='Assign', command=self.assign_task,
-                                        style='Bold.TButton', width=20).place(x=300, y=130, width=160, height=50)
-
-    def setup_tasks2_button_widgets(self):
-        ttk.Button(self.button_frame_tasks2, text='Update Status', command=self.update_status, width=20,
-                   style='Bold.TButton',
-                   ).place(x=40, y=35, width=200, height=50)
-        ttk.Button(self.button_frame_tasks2, text='Back', command=self.close_subpanel, style='Bold.TButton',
-                   width=20).place(x=20, y=630, width=60, height=30)
-
-    def setup_tasks2_entry_widgets(self):
-
-        self.status_var = StringVar()
-        self.status_menu = ttk.Combobox(self.task_assignment_frame2, textvariable=self.status_var, state='readonly',
-                                        values=["Incomplete", "In Progress", "Blocked", "Complete"])
-        self.status_menu.place(x=130, y=80)
 
     # Inventory Management Table
     def setup_table(self):
@@ -333,7 +266,7 @@ class SupervisorApp:
 
         self.table.place(relx=0, rely=0, relheight=1, relwidth=1)
 
-# panel's buttons
+    # panel's buttons
     def open_inventory_panel(self):
         self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame.place_forget()
@@ -344,19 +277,15 @@ class SupervisorApp:
     def close_subpanel(self):
         self.button_frame.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame_inventory.place_forget()
-        self.button_frame_tasks.place_forget()
-        self.button_frame_tasks2.place_forget()
         self.table_frame.place_forget()
         self.table_frame2.place_forget()
         self.table_frame3.place_forget()
         self.table_frame4.place_forget()
         self.data_entry_frame.place_forget()
-        self.task_assignment_frame.place_forget()
-        self.task_assignment_frame2.place_forget()
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
         self.show_bar_chart()
 
-# Inventory Management Functions
+    # Inventory Management Functions
     def list_all_inventory(self):
         self.table.delete(*self.table.get_children())
 
@@ -458,7 +387,6 @@ class SupervisorApp:
                                   bg='red', command=self.cancel_update)
 
             self.add_btn.place(x=420, y=220)
-
 
     def update_record(self):
         global new_stock_existing
@@ -617,7 +545,7 @@ class SupervisorApp:
         self.setup_data_entry_widgets()
         self.clear_fields()
 
-# Inventory Report
+    # Inventory Report
     @staticmethod
     def generate_pdf_report(product_name, product_id, stocks, category, purchase_price, selling_price, location,
                             date, action):
@@ -645,7 +573,7 @@ class SupervisorApp:
 
         mb.showinfo('PDF Report', f'{action} report generated: {pdf_name}')
 
-# Dashboard Bar Chart
+    # Dashboard Bar Chart
     def show_bar_chart(self):
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
 
