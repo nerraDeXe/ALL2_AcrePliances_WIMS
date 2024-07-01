@@ -12,22 +12,6 @@ class VendorApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect('AcrePliances.db')
         self.cursor = self.connector.cursor()
-
-        self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Vendors ('
-            'VENDOR_ID INTEGER PRIMARY KEY, '
-            'NAME VARCHAR(20), '
-            'EMAIL VARCHAR(20), '
-            'PHONE_NUMBER VARCHAR(10), '
-            'COMPANY VARCHAR(20))'
-        )
-        self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Notifications ('
-            'NOTIFICATION_ID INTEGER PRIMARY KEY AUTOINCREMENT, '
-            'DESCRIPTION TEXT, '
-            'TIMESTAMP DATETIME DEFAULT CURRENT_TIMESTAMP)'
-        )
-
         self.connector.commit()
 
         self.root = root
@@ -98,7 +82,6 @@ class VendorApp:
         self.vendor_tree.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
     def close_subpanel(self):
-        subprocess.Popen(["python", "admin_panel.py"])  # Assuming this line opens another script or window
         self.root.destroy()  # Close the main window and all associated frames
 
     def load_vendor_ids(self):
@@ -119,6 +102,7 @@ class VendorApp:
         self.extra_window = ctk.CTkToplevel(self.root)  # Use self.root as the parent
         self.extra_window.title('Add Vendor')
         self.extra_window.geometry('600x600')
+        self.extra_window.attributes('-topmost', True)
 
         title_label = ctk.CTkLabel(self.extra_window, text="ADD NEW VENDOR", font=("Helvetica", 14))
         title_label.pack(pady=20)
@@ -190,6 +174,7 @@ class VendorApp:
         self.extra_window = ctk.CTkToplevel(self.root)
         self.extra_window.title('Edit Vendor')
         self.extra_window.geometry('600x600')
+        self.extra_window.attributes('-topmost', True)
 
         title_label = ctk.CTkLabel(self.extra_window, text="EDIT VENDOR", font=("Helvetica", 14))
         title_label.pack(pady=20)
