@@ -72,7 +72,7 @@ class Database:
                 PRODUCT_ID TEXT,
                 CATEGORY TEXT,
                 QUANTITY INTEGER,
-                DATE date,
+                DATETIME DATETIME,
                 STORE_BRANCH TEXT)
         ''')
 
