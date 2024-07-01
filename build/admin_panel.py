@@ -21,47 +21,6 @@ class AdminApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect("AcrePliances.db")
         self.cursor = self.connector.cursor()
-
-        self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Inventory ('
-            'PRODUCT_REAL_ID INTEGER PRIMARY KEY, '
-            'date DATE, '
-            'PRODUCT_NAME TEXT, '
-            'PRODUCT_ID TEXT, '
-            'STOCKS INTEGER, '
-            'CATEGORY VARCHAR(30), '
-            'PURCHASE_PRICE FLOAT, '
-            'SELLING_PRICE FLOAT, '
-            'LOCATION VARCHAR(30), '
-            'INTERNAL_REFERENCE VARCHAR(30))'
-        )
-
-        self.connector.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                USER_REAL_ID INTEGER PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                role TEXT NOT NULL CHECK(role IN ('Administrator', 'Supervisor', 'Worker'))
-            )
-        ''')
-
-        self.connector.execute('''
-            CREATE TABLE IF NOT EXISTS notifications (
-                notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                notification_description TEXT NOT NULL
-            )
-        ''')
-
-        self.connector.execute('''
-            CREATE TABLE IF NOT EXISTS Vendors (
-                VENDOR_ID INTEGER PRIMARY KEY,
-                NAME VARCHAR(20),
-                EMAIL VARCHAR(20),
-                PHONE_NUMBER VARCHAR(10),
-                COMPANY VARCHAR(20)
-            )
-        ''')
-
         self.connector.commit()
 
         self.root = root
@@ -81,7 +40,6 @@ class AdminApp:
         self.custom_style.configure('Bold.TButton', font=('Helvetica', 12, 'bold'), background="black")
 
         self.list_all_inventory()
-        self.load_users()
         self.original_items = {}
 
     def setup_variables(self):
@@ -155,7 +113,6 @@ class AdminApp:
         self.setup_button_widgets()
         self.setup_inventory_button_widgets()
         self.setup_table()
-        self.setup_user_management_widgets()
         self.setup_user_table()
 
         self.username_label = Label(self.dashboard1_frame, text=f"Welcome, {self.username}",
@@ -266,7 +223,7 @@ class AdminApp:
                   font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
                   ).place(x=40, y=290, anchor=W)
 
-        CTkButton(self.button_frame, text='Sales Order', width=275,
+        CTkButton(self.button_frame, text='Sales Order', command=self.open_sales_order_panel, width=275,
                   height=80, border_width=0, fg_color='white', border_color='black', text_color='black',
                   font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
                   ).place(x=40, y=400, anchor=W)
@@ -301,22 +258,6 @@ class AdminApp:
                   border_width=0, fg_color='red', border_color='black', text_color='white',
                   font=('Microsoft YaHei UI Light', 16), corner_radius=15, hover_color='orange'
                   ).place(x=20, y=700, anchor=W)
-
-    def setup_user_management_widgets(self):
-        CTkButton(self.button_frame_users, text='Add User', command=self.add_user, width=275, height=80,
-                  border_width=0, fg_color='white', border_color='black', text_color='black',
-                  font=('Microsoft YaHei UI Light', 22), corner_radius=15, hover_color='orange'
-                  ).place(x=40, y=100)
-
-        CTkButton(self.button_frame_users, text='Delete User', command=self.delete_user, width=275, height=80,
-                  border_width=0, fg_color='white', border_color='black', text_color='black',
-                  font=('Microsoft YaHei UI Light', 22),
-                  corner_radius=15, hover_color='orange').place(x=40, y=280)
-
-        CTkButton(self.button_frame_users, text='Back', command=self.close_subpanel, width=90, height=45,
-                  border_width=0, fg_color='red', border_color='black', text_color='white',
-                  font=('Microsoft YaHei UI Light', 16),
-                  corner_radius=15, hover_color='orange').place(x=20, y=700)
 
     def sort_by_column(self, treeview, col, descending):
         # Get the current data in the treeview
@@ -398,8 +339,6 @@ class AdminApp:
         self.button_frame_users.place_forget()
         self.button_frame.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
         self.button_frame_inventory.place_forget()
-        self.button_frame_tasks.place_forget()
-        self.button_frame_tasks2.place_forget()
         self.table_frame.place_forget()
         self.table_frame2.place_forget()
         self.table_frame3.place_forget()
@@ -411,10 +350,25 @@ class AdminApp:
         self.show_bar_chart()
 
     def open_purchase_order_panel(self):
+        root.withdraw()
         subprocess.run(["python", "Purchase order.py"])
+        root.deiconify()
 
     def open_vendor_details_panel(self):
+        root.withdraw()
         subprocess.run(["python", "Vendor details.py"])
+        root.deiconify()
+
+    def open_sales_order_panel(self):
+        root.withdraw()
+        subprocess.run(["python", "Sales order.py"])
+        root.deiconify()
+
+    def open_user_management_panel(self):
+        root.withdraw()
+        subprocess.run(["python", "User Management.py"])
+        root.deiconify()
+
 
     def list_all_inventory(self):
         self.table.delete(*self.table.get_children())
@@ -453,35 +407,6 @@ class AdminApp:
                                                  command=self.delete_notification)
         self.delete_notification_button.pack(pady=10)
 
-        self.display_notifications()
-
-    def display_notifications(self):
-        try:
-            self.cursor.execute("SELECT * FROM notifications")
-            records = self.cursor.fetchall()
-
-            self.NOTIFICATION_LIST.delete(0, END)
-            for record in records:
-                self.NOTIFICATION_LIST.insert(END, record[1])
-        except sqlite3.Error as e:
-            print("Error fetching notifications:", e)
-
-    def add_notification(self):
-        new_notification = "New Notification"
-        self.cursor.execute("INSERT INTO notifications (notification_description) "
-                            "VALUES (?)", (new_notification,))
-        self.connector.commit()
-        self.display_notifications()
-
-    def delete_notification(self):
-        selected_index = self.NOTIFICATION_LIST.curselection()
-        if not selected_index:
-            mb.showerror('No notification selected!', 'Please select a notification to delete!')
-            return
-
-        notification_id = selected_index[0] + 1  # Adjust index since SQLite starts from 1
-        self.cursor.execute("DELETE FROM notifications WHERE id = ?", (notification_id,))
-        self.connector.commit()
         self.display_notifications()
 
     ####################### CRUD#########################################################################################
@@ -804,191 +729,6 @@ class AdminApp:
         self.hide_data_entry_widgets()
         self.setup_data_entry_widgets()
         self.clear_fields()
-
-    # User Management panel
-    def open_user_management_panel(self):
-        self.button_frame.place_forget()
-        self.chart_frame.place_forget()
-        self.button_frame_users.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
-        self.table_frame2.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-
-    #  User Management (Add new user) update the code
-    def add_user(self):
-        add_user_window = Toplevel(self.root)
-        add_user_window.title("Add User")
-        add_user_window.geometry("400x300")
-        add_user_window.resizable(False, False)
-
-        username_var = StringVar()
-        password_var = StringVar()
-        role_var = StringVar()
-        show_password_var = BooleanVar()
-
-        Label(add_user_window, text="Username").grid(row=0, column=0, padx=10, pady=5, sticky='e')
-        Entry(add_user_window, textvariable=username_var).grid(row=0, column=1, padx=10, pady=5)
-
-        Label(add_user_window, text="Password").grid(row=1, column=0, padx=10, pady=5, sticky='e')
-        password_entry = Entry(add_user_window, textvariable=password_var, show="*")
-        password_entry.grid(row=1, column=1, padx=10, pady=5)
-
-        self.show_icon = PhotoImage(file="show_password.png")  # Path to your "show password" icon
-        self.hide_icon = PhotoImage(file="hide_password.png")  # Path to your "hide password" icon
-
-        user_toggle_button = Button(add_user_window, image=self.show_icon,
-                                    command=lambda: self.new_user_toggle_password(password_entry, show_password_var,
-                                                                                  user_toggle_button))
-        user_toggle_button.grid(row=1, column=2, padx=10, pady=5)
-
-        Label(add_user_window, text="Role:").grid(row=2, column=0, padx=10, pady=5, sticky='e')
-        ttk.OptionMenu(add_user_window, role_var, 'Supervisor', 'Supervisor', 'Worker').grid(row=2, column=1, padx=10,
-                                                                                             pady=5)
-
-        def save_user():
-            username = username_var.get()
-            password = password_var.get()
-            role = role_var.get()
-            if username and password and role:
-                try:
-                    hashed_password = hashlib.sha256(password.encode()).hexdigest()
-                    conn = sqlite3.connect('AcrePliances.db')
-                    cursor = conn.cursor()
-                    cursor.execute('INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-                                   (username, hashed_password, role))
-                    conn.commit()
-                    mb.showinfo('User added', 'The user was successfully added')
-                    self.load_users()
-                    self.add_notification()
-                except sqlite3.Error as e:
-                    mb.showerror('Database Error', f'Error: {e}')
-                finally:
-                    conn.close()
-                add_user_window.destroy()
-            else:
-                mb.showerror('Error', 'All fields are required')
-
-        Button(add_user_window, text="Save", command=save_user).grid(row=3, column=1, padx=10, pady=15)
-
-    def load_users(self):
-        self.user_table.delete(*self.user_table.get_children())
-        try:
-            conn = sqlite3.connect('AcrePliances.db')
-            cursor = conn.cursor()
-            cursor.execute('SELECT USER_REAL_ID, username, role FROM users')
-            users = cursor.fetchall()
-            for user in users:
-                self.user_table.insert('', END, values=user)
-        except sqlite3.Error as e:
-            mb.showerror('Database Error', f'Error: {e}')
-        finally:
-            conn.close()
-
-    def new_user_toggle_password(self, password_entry, show_password_var, toggle_button):
-        if show_password_var.get():
-            password_entry.config(show='*')
-            toggle_button.config(image=self.show_icon)
-        else:
-            password_entry.config(show='')
-            toggle_button.config(image=self.hide_icon)
-        show_password_var.set(not show_password_var.get())
-
-    ########################################################################################################################
-
-    # Delete user from the WIMS
-    def delete_user(self):
-        selected_item = self.user_table.selection()
-        if not selected_item:
-            mb.showerror('No user selected!', 'Please select a user to delete')
-        else:
-            current_item = self.user_table.focus()
-            contents = self.user_table.item(current_item)
-            selected_user = contents['values']
-
-            confirm = mb.askyesno('Delete user?', f'Are you sure you want to delete user {selected_user[1]}?',
-                                  icon='warning')
-            if confirm:
-                conn = sqlite3.connect('AcrePliances.db')
-                cursor = conn.cursor()
-                cursor.execute('DELETE FROM users WHERE USER_REAL_ID = ?', (selected_user[0],))
-                conn.commit()
-                conn.close()
-
-                self.user_table.delete(current_item)
-                mb.showinfo('User deleted', 'The selected user was successfully deleted')
-                self.add_notification()
-
-    # Function that open the task window
-    def open_task_panel(self):
-        self.button_frame.place_forget()
-        self.chart_frame.place_forget()
-        self.table_frame3.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        self.button_frame_tasks.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.task_assignment_frame.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
-        self.load_tasks()
-
-    def open_task2_panel(self):
-        self.button_frame.place_forget()
-        self.chart_frame.place_forget()
-        self.table_frame4.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        self.button_frame_tasks2.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
-        self.task_assignment_frame2.place(relx=0.22, rely=0.75, relwidth=0.78, relheight=0.25)
-        self.load_tasks2()
-
-    def load_tasks(self):
-        self.task_table.delete(*self.task_table.get_children())
-        conn = sqlite3.connect('AcrePliances.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT id, task, assigned_to, status FROM tasks')
-        tasks = cursor.fetchall()
-        conn.close()
-
-        for task in tasks:
-            self.task_table.insert("", "end", values=(task[0], task[1], task[2], task[3]), iid=task[0])
-
-    def load_tasks2(self):
-        for i in self.task2_table.get_children():
-            self.task2_table.delete(i)
-
-        conn = sqlite3.connect('AcrePliances.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, task, status FROM tasks WHERE assigned_to=?", (self.username,))
-        for task in cursor.fetchall():
-            self.task2_table.insert("", "end", values=(task[0], task[1], task[2]), iid=task[0])
-        conn.close()
-
-    def update_status(self):
-        selected_item = self.task2_table.focus()
-        new_status = self.status_var.get()
-
-        if selected_item:
-            print(f"Selected Item: {selected_item}, New Status: {new_status}")
-            if new_status:
-                try:
-                    conn = sqlite3.connect('AcrePliances.db')
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE tasks SET status=? WHERE id=?", (new_status, selected_item))
-                    conn.commit()
-                    conn.close()
-                    self.load_tasks2()
-                except sqlite3.Error as e:
-                    mb.showerror("Database Error", f"Error updating task status: {e}")
-            else:
-                mb.showwarning("Input Error", "Please select a status to update.")
-        else:
-            mb.showwarning("Selection Error", "Please select a task to update.")
-
-    def assign_task(self):
-        task = self.task_entry.get()
-        worker = self.worker_entry.get()
-        if not task or not worker:
-            mb.showerror("Error", "Please fill in all fields")
-            return
-
-        conn = sqlite3.connect('AcrePliances.db')
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO tasks (task, assigned_to, status) VALUES (?, ?, ?)", (task, worker, "Incomplete"))
-        conn.commit()
-        conn.close()
-        self.load_tasks()
 
     def generate_pdf_report(self, product_name, product_id, stocks, category, purchase_price, selling_price, location,
                             date, action):
