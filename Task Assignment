@@ -14,42 +14,6 @@ class WorkerApp:
         self.connector = sqlite3.connect("AcrePliances.db")
         self.cursor = self.connector.cursor()
 
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS roles (
-                role_id INTEGER PRIMARY KEY,
-                role_name TEXT NOT NULL UNIQUE
-            )
-        ''')
-
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                USER_REAL_ID INTEGER PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                role_id INTEGER NOT NULL,
-                FOREIGN KEY (role_id) REFERENCES roles (role_id)
-            )
-        ''')
-
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS tasks (
-                task_id INTEGER PRIMARY KEY,
-                task_name TEXT NOT NULL,
-                task_description TEXT,
-                assigned_to TEXT NOT NULL,
-                status TEXT,
-                deadline DATE,
-                FOREIGN KEY (assigned_to) REFERENCES users (username)
-            )
-        ''')
-
-        self.connector.execute(
-            'CREATE TABLE IF NOT EXISTS Notifications ('
-            'NOTIFICATION_ID INTEGER PRIMARY KEY AUTOINCREMENT, '
-            'DESCRIPTION TEXT, '
-            'TIMESTAMP DATETIME DEFAULT CURRENT_TIMESTAMP)'
-        )
-
         self.username = username
         self.root = root
         self.root.title("Worker Application")
@@ -175,7 +139,7 @@ class WorkerApp:
         assign_to_label.pack(side=tk.LEFT)
 
         # Create dropdown list for usernames
-        self.cursor.execute("SELECT username FROM users")
+        self.cursor.execute("SELECT username FROM workers")
         usernames = [row[0] for row in self.cursor.fetchall()]
         self.assign_to_combobox = ttk.Combobox(assign_to_frame, values=usernames)
         self.assign_to_combobox.pack(side=tk.RIGHT, fill=tk.X, expand=True)
