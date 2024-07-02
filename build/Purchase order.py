@@ -357,7 +357,7 @@ class PurchaseApp:
         category_frame.pack(pady=5, padx=10, fill=tk.X)
         category_label = ctk.CTkLabel(category_frame, text="Category:")
         category_label.pack(side=tk.LEFT)
-        self.category_var = tk.StringVar(value=order[3])
+        self.category_var = tk.StringVar(value=order[2])  # Correct index for category
         self.category_menu = ttk.Combobox(category_frame, textvariable=self.category_var,
                                           values=["Electronics", "Appliances", "Personal Care", "Homeware",
                                                   "Furniture"])
@@ -366,19 +366,11 @@ class PurchaseApp:
         # Ordered Quantity
         quantity_frame = ctk.CTkFrame(self.complete_window)
         quantity_frame.pack(pady=5, padx=10, fill=tk.X)
-        quantity_label = ctk.CTkLabel(quantity_frame, text="Ordered Quantity:")
+        quantity_label = ctk.CTkLabel(quantity_frame, text="Quantity:")
         quantity_label.pack(side=tk.LEFT)
         self.quantity_entry = ctk.CTkEntry(quantity_frame)
-        self.quantity_entry.insert(0, order[4])
+        self.quantity_entry.insert(0, order[3])  # Correct index for quantity
         self.quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
-
-        # Received Quantity
-        received_quantity_frame = ctk.CTkFrame(self.complete_window)
-        received_quantity_frame.pack(pady=5, padx=10, fill=tk.X)
-        received_quantity_label = ctk.CTkLabel(received_quantity_frame, text="Received Quantity:")
-        received_quantity_label.pack(side=tk.LEFT)
-        self.received_quantity_entry = ctk.CTkEntry(received_quantity_frame)
-        self.received_quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Purchase Price
         purchase_price_frame = ctk.CTkFrame(self.complete_window)
@@ -402,13 +394,12 @@ class PurchaseApp:
         complete_button.pack(pady=20)
 
     def complete_order(self, order):
-        # Ensure product_id is formatted correctly
-        name = order[1]
-        product_id = f'PT00{order[0]}'
-        category = order[2]
-        quantity = order[3]
+        name = self.name_entry.get()
+        category = self.category_var.get()
+        quantity = self.quantity_entry.get()
         purchase_price = self.purchase_price_entry.get()
         selling_price = self.selling_price_entry.get()
+        product_id = f'PT00{order[0]}'
         location = 'Staging Area'
         location_prefix = 'Stage'
         internal_reference = f"WH-{location_prefix}-{product_id}"
@@ -416,10 +407,10 @@ class PurchaseApp:
 
         # Insert data into the Inventory table
         self.acre_cursor.execute('''
-            INSERT INTO Inventory  (PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, 
-            LOCATION, INTERNAL_REFERENCE, date)
+            INSERT INTO Inventory (date, PRODUCT_NAME, PRODUCT_ID, CATEGORY, STOCKS, PURCHASE_PRICE, SELLING_PRICE, 
+            LOCATION, INTERNAL_REFERENCE)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (current_date, name, product_id, quantity, category, purchase_price, selling_price, location,
+        ''', (current_date, name, product_id, category, quantity, purchase_price, selling_price, location,
               internal_reference))
         self.acre_connector.commit()
 
