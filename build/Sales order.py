@@ -32,8 +32,6 @@ class SalesApp:
         title_label = ctk.CTkLabel(top_frame, text="SALES ORDER MANAGEMENT", font=("Helvetica", 16), text_color='white')
         title_label.pack(side=tk.LEFT, padx=20, pady=20)
 
-        welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12), text_color='white')
-        welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
 
         self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
         self.notification_button = tk.Button(top_frame, image=self.notification_image, bg='white', activebackground='darkred', command=self.show_notifications_window)
@@ -104,6 +102,21 @@ class SalesApp:
 
         self.inventory_tree.column("PRODUCT_REAL_ID", width=0, stretch=tk.NO)
 
+        # Adjust column widths
+        self.adjust_column_widths()
+
+    def adjust_column_widths(self):
+        # Calculate available width for remaining columns
+        total_width = self.inventory_frame.winfo_width()
+        visible_columns = [col for col in self.inventory_tree["columns"] if col != "PRODUCT_REAL_ID"]
+        column_count = len(visible_columns)
+
+        if column_count > 0 and total_width > 0:
+            equal_width = total_width // column_count
+
+            for col in visible_columns:
+                self.inventory_tree.column(col, width=equal_width)
+
     def close_subpanel(self):
         self.root.destroy()  # Close the main window and all associated frames
 
@@ -150,16 +163,16 @@ class SalesApp:
         location_branch_label.pack(side=tk.LEFT)
 
         branches = [
-            "Harvey Norgirl Penang",
-            "Harvey Norgirl Kedah",
-            "Harvey Norgirl Perlis",
-            "Harvey Norgirl Perak",
-            "Harvey Norgirl Kelantan",
-            "Harvey Norgirl Terengganu",
-            "Harvey Norgirl Pahang",
-            "Harvey Norgirl Johor",
-            "Harvey Norgirl Melaka",
-            "Harvey Norgirl Negeri Sembilan"
+            "AcrePliances Penang",
+            "AcrePliances Kedah",
+            "AcrePliances Perlis",
+            "AcrePliances Perak",
+            "AcrePliances Kelantan",
+            "AcrePliances Terengganu",
+            "AcrePliances Pahang",
+            "AcrePliances Johor",
+            "AcrePliances Melaka",
+            "AcrePliances Negeri Sembilan"
         ]
         self.location_branch_var = tk.StringVar()
         self.location_branch_combobox = ttk.Combobox(location_branch_frame, textvariable=self.location_branch_var, values=branches)
@@ -305,4 +318,4 @@ class SalesApp:
 if __name__ == "__main__":
     root = ctk.CTk()
     app = SalesApp(root, "admin")
-    root.mainloop() 
+    root.mainloop()
