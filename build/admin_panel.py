@@ -122,7 +122,7 @@ class AdminApp:
                                                        command=self.open_vendor_details_panel)
         self.button5.pack(pady=10)
 
-        self.back_button = ctk.CTkButton(left_frame, text="Back", command=self.close_subpanel)
+        self.back_button = ctk.CTkButton(left_frame, text="LOG OUT", command=self.close_subpanel)
         self.back_button.pack(side=tk.BOTTOM, pady=20)
 
         main_frame = ctk.CTkFrame(self.root, fg_color='white')
@@ -246,6 +246,7 @@ class AdminApp:
         self.notification_window.title('Notifications')
         self.notification_window.geometry('500x400')
         self.notification_window.resizable(0, 0)
+        self.notification_window.attributes('-topmost', 'true')
 
         notification_label = ctk.CTkLabel(self.notification_window, text="Notifications", font=("Helvetica", 14))
         notification_label.pack(pady=20)
