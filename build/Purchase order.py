@@ -399,9 +399,9 @@ class PurchaseApp:
         quantity = self.quantity_entry.get()
         purchase_price = self.purchase_price_entry.get()
         selling_price = self.selling_price_entry.get()
-        product_id = f'PT00{order[0]}'
+        product_id = self.generate_product_id(category)
         location = 'Staging Area'
-        location_prefix = 'Stage'
+        location_prefix = 'STA'
         internal_reference = f"WH-{location_prefix}-{product_id}"
         current_date = date.today().strftime("%Y-%m-%d")
 
@@ -424,6 +424,12 @@ class PurchaseApp:
 
         # Add a notification about the completed order
         self.add_notification(f"Completed order for {name}")
+
+    def generate_product_id(self, category):
+        self.cursor.execute('SELECT COUNT(*) FROM Orders WHERE CATEGORY=?', (category,))
+        count = self.cursor.fetchone()[0]
+        product_id = f"{category[0].upper()}{count + 1:03d}"
+        return product_id
 
     ############################################ NOTIFICATION FUNCTIONS#################################################
     def add_notification(self, description):
