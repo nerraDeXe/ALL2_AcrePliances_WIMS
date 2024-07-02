@@ -328,12 +328,12 @@ class AdminApp:
         self.user_table.place(relx=0, rely=0, relheight=1, relwidth=1)
 
     # Dashboards buttons open
-    def open_inventory_panel(self):
-        self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
-        self.button_frame.place_forget()
-        self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
-        self.chart_frame.place_forget()
-        self.hide_move_product_widgets()
+    # def open_inventory_panel(self):
+    #     self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.80, relwidth=0.22)
+    #     self.button_frame.place_forget()
+    #     self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
+    #     self.chart_frame.place_forget()
+    #     self.hide_move_product_widgets()
 
     def close_subpanel(self):
         self.button_frame_users.place_forget()
@@ -349,6 +349,11 @@ class AdminApp:
         self.chart_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.55)
         self.show_bar_chart()
 
+
+    def open_inventory_panel(self):
+        root.withdraw()
+        subprocess.run(["python", "Inventory Management.py"])
+        root.deiconify()
     def open_purchase_order_panel(self):
         root.withdraw()
         subprocess.run(["python", "Purchase order.py"])
@@ -593,7 +598,6 @@ class AdminApp:
                   command=self.add_window.destroy).grid(row=8, column=1, padx=10, pady=10)
 
     def update_record(self):
-        global new_stock_existing
         current_selected_product = self.table.item(self.table.focus())
         contents = current_selected_product['values']
 
@@ -624,7 +628,7 @@ class AdminApp:
             )
 
             # Check if the product already exists in the new location
-            existing_product = self.cursor.execute(
+            existing_product = self.connector.execute(
                 'SELECT * FROM Inventory WHERE PRODUCT_NAME=? AND CATEGORY=? AND LOCATION=?',
                 (self.PRODUCT_NAME.get(), self.CATEGORY.get(), new_location)
             ).fetchone()
@@ -654,7 +658,8 @@ class AdminApp:
             mb.showinfo('Updated successfully',
                         f'The record of {self.PRODUCT_NAME.get()} was updated successfully and {amount_to_move} items '
                         f'were moved to {new_location}')
-            self.add_notification()
+
+            # self.add_notification()
             self.list_all_inventory()
             self.table_frame.place(relx=0.22, rely=0.20, relwidth=0.78, relheight=0.60)
             self.button_frame_inventory.place(relx=0.00, rely=0.20, relheight=0.90, relwidth=0.22)
@@ -691,7 +696,7 @@ class AdminApp:
             self.clear_fields()
 
         except Exception as e:
-            mb.showerror("Error", f"Inappropriate values. {str(e)}")
+            mb.showerror('Error', f"An error occurred: {e}")
 
     def update_record_direct(self):
         try:
