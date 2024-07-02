@@ -7,6 +7,7 @@ from datetime import datetime
 from PIL import Image, ImageTk
 import pytz
 
+
 class SalesApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect('AcrePliances.db')
@@ -73,7 +74,17 @@ class SalesApp:
         self.sales_order_tree.heading("Quantity", text="Quantity")
         self.sales_order_tree.heading("Date", text="Date")
         self.sales_order_tree.heading("Store Branch", text="Store Branch")
-        self.sales_order_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+
+        self.sales_order_tree.column("ID", width=50, stretch=tk.NO)
+        self.sales_order_tree.column("Product Name", width=280, stretch=tk.NO)
+        self.sales_order_tree.column("Product ID", width=100, stretch=tk.NO)
+        self.sales_order_tree.column("Category", width=150, stretch=tk.NO)
+        self.sales_order_tree.column("Quantity", width=100, stretch=tk.NO)
+        self.sales_order_tree.column("Date", width=194, stretch=tk.NO)
+        self.sales_order_tree.column("Store Branch", width=200, stretch=tk.NO)
+
+        self.sales_order_tree.pack(fill=tk.BOTH, expand=False, padx=10, pady=10)
 
         inventory_details_label = ctk.CTkLabel(self.inventory_frame, text="Inventory:", font=("Helvetica", 20, 'bold'), text_color='black')
         inventory_details_label.pack(anchor=tk.W, pady=10)
@@ -137,9 +148,22 @@ class SalesApp:
         location_branch_frame.pack(pady=5, padx=10, fill=tk.X)
         location_branch_label = ctk.CTkLabel(location_branch_frame, text="Location Branch:")
         location_branch_label.pack(side=tk.LEFT)
+
+        branches = [
+            "Harvey Norgirl Penang",
+            "Harvey Norgirl Kedah",
+            "Harvey Norgirl Perlis",
+            "Harvey Norgirl Perak",
+            "Harvey Norgirl Kelantan",
+            "Harvey Norgirl Terengganu",
+            "Harvey Norgirl Pahang",
+            "Harvey Norgirl Johor",
+            "Harvey Norgirl Melaka",
+            "Harvey Norgirl Negeri Sembilan"
+        ]
         self.location_branch_var = tk.StringVar()
-        self.location_branch_entry = ctk.CTkEntry(location_branch_frame, textvariable=self.location_branch_var)
-        self.location_branch_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.location_branch_combobox = ttk.Combobox(location_branch_frame, textvariable=self.location_branch_var, values=branches)
+        self.location_branch_combobox.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         add_button = ctk.CTkButton(self.extra_window, text="Add Order", command=self.add_sales_order)
         add_button.pack(pady=10)
@@ -158,18 +182,17 @@ class SalesApp:
                 '?, ?, ?, ?, ?, ?)',
                 (self.selected_product_name, self.selected_product_id, self.selected_category, quantity, self.selected_date, location_branch)
             )
-            new_stock_quantity = self.selected_quantity - quantity
             self.cursor.execute(
-                'UPDATE Inventory SET STOCKS=? WHERE PRODUCT_ID=?',
-                (new_stock_quantity, self.selected_product_id)
+                'UPDATE Inventory SET STOCKS = STOCKS - ? WHERE PRODUCT_ID = ?',
+                (quantity, self.selected_product_id)
             )
             self.connector.commit()
             self.load_sales_order_data()
             self.load_inventory_data()
-            messagebox.showinfo('Success', 'Sales order added successfully!')
             self.extra_window.destroy()
+            messagebox.showinfo('Success', 'Sales order added successfully!')
         else:
-            messagebox.showwarning('Error', 'Please fill in all fields.')
+            messagebox.showwarning('Error', 'Please fill in all the details.')
 
     def delete_order(self):
         selected_item = self.sales_order_tree.selection()
@@ -282,4 +305,4 @@ class SalesApp:
 if __name__ == "__main__":
     root = ctk.CTk()
     app = SalesApp(root, "admin")
-    root.mainloop()
+    root.mainloop() 
