@@ -429,9 +429,25 @@ class PurchaseApp:
         messagebox.showinfo("Order Completed", f"The order for {name} has been successfully completed.")
 
     def generate_product_id(self, category):
-        self.cursor.execute('SELECT COUNT(*) FROM Purchase_Orders WHERE CATEGORY=?', (category,))
-        count = self.cursor.fetchone()[0]
-        product_id = f"{category[0].upper()}{count + 1:03d}"
+        # Check if the category already exists in the counter table
+        self.cursor.execute('SELECT LAST_PRODUCT_ID FROM Product_Counter WHERE CATEGORY=?', (category,))
+        result = self.cursor.fetchone()
+
+        if result:
+            # Increment the existing counter
+            last_id = result[0]
+            new_id = last_id + 1
+            self.cursor.execute('UPDATE Product_Counter SET LAST_PRODUCT_ID=? WHERE CATEGORY=?', (new_id, category))
+        else:
+            # Initialize the counter for the new category
+            new_id = 1
+            self.cursor.execute('INSERT INTO Product_Counter (CATEGORY, LAST_PRODUCT_ID) VALUES (?, ?)',
+                                (category, new_id))
+
+        self.connector.commit()
+
+        # Generate the product ID
+        product_id = f"{category[0].upper()}{new_id:03d}"
         return product_id
 
     ############################################ NOTIFICATION FUNCTIONS#################################################
