@@ -32,9 +32,9 @@ class WorkerApp:
                                    text_color='white')
         title_label.pack(side=tk.LEFT, padx=20, pady=20)
 
-        welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12),
-                                     text_color='white')
-        welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
+        # welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12),
+        #                              text_color='white')
+        # welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
 
         # Add notification button
         self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
@@ -83,6 +83,21 @@ class WorkerApp:
         self.task_tree.heading("Status", text="Status")
         self.task_tree.heading("Deadline", text="Deadline")
         self.task_tree.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+
+        # Adjust column widths
+        self.adjust_column_widths()
+
+    def adjust_column_widths(self):
+        # Calculate available width for remaining columns
+        total_width = self.task_frame.winfo_width()
+        visible_columns = [col for col in self.task_tree["columns"] if col != "PRODUCT_REAL_ID"]
+        column_count = len(visible_columns)
+
+        if column_count > 0 and total_width > 0:
+            equal_width = total_width // column_count
+
+            for col in visible_columns:
+                self.task_tree.column(col, width=equal_width)
 
     def load_tasks(self):
         for i in self.task_tree.get_children():
@@ -185,7 +200,6 @@ class WorkerApp:
         self.deadline_entry.set_date(datetime.now().date())
 
     def close_subpanel(self):
-        subprocess.Popen(["python", "supervisor_panel.py"])  # Assuming this line opens another script or window
         self.root.destroy()  # Close the main window and all associated frames
 
     ################################################NOTIFICAITON FUNCTIONS#################################
