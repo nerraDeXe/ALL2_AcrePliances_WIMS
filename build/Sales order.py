@@ -7,12 +7,10 @@ from datetime import datetime
 from PIL import Image, ImageTk
 import pytz
 
-
 class SalesApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect('AcrePliances.db')
         self.cursor = self.connector.cursor()
-
         self.connector.commit()
 
         self.root = root
@@ -30,36 +28,26 @@ class SalesApp:
         top_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         top_frame.pack(side=tk.TOP, fill=tk.X)
 
-        title_label = ctk.CTkLabel(top_frame, text="SALES ORDER MANAGEMENT", font=("Helvetica", 16),
-                                   text_color='white')
+        title_label = ctk.CTkLabel(top_frame, text="SALES ORDER MANAGEMENT", font=("Helvetica", 16), text_color='white')
         title_label.pack(side=tk.LEFT, padx=20, pady=20)
 
-        welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12),
-                                     text_color='white')
+        welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12), text_color='white')
         welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
 
-        # Add notification button
         self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
-
-        # Create the image button
-        self.notification_button = tk.Button(top_frame, image=self.notification_image, bg='white',
-                                             activebackground='darkred', command=self.show_notifications_window)
+        self.notification_button = tk.Button(top_frame, image=self.notification_image, bg='white', activebackground='darkred', command=self.show_notifications_window)
         self.notification_button.pack(side=tk.RIGHT, padx=20, pady=20)
 
         left_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=20)
 
-        self.add_sales_order_button = ctk.CTkButton(left_frame, text="ADD SALES ORDER", fg_color='#FFFFFF',
-                                                    text_color='#000000',
-                                                    command=self.create_sales_order_window)
+        self.add_sales_order_button = ctk.CTkButton(left_frame, text="ADD SALES ORDER", fg_color='#FFFFFF', text_color='#000000', command=self.create_sales_order_window)
         self.add_sales_order_button.pack(pady=10)
 
-        self.delete_sales_order_button = ctk.CTkButton(left_frame, text="DELETE SALES ORDER", fg_color='#FFFFFF',
-                                                       text_color='#000000', command=self.delete_order)
+        self.delete_sales_order_button = ctk.CTkButton(left_frame, text="DELETE SALES ORDER", fg_color='#FFFFFF', text_color='#000000', command=self.delete_order)
         self.delete_sales_order_button.pack(pady=10)
 
-        self.complete_order_button = ctk.CTkButton(left_frame, text="COMPLETE ORDER", fg_color='#FFFFFF',
-                                                   text_color='#000000', command=self.complete_sales_order)
+        self.complete_order_button = ctk.CTkButton(left_frame, text="COMPLETE ORDER", fg_color='#FFFFFF', text_color='#000000', command=self.complete_sales_order)
         self.complete_order_button.pack(pady=10)
 
         self.back_button = ctk.CTkButton(left_frame, text="Back", command=self.close_subpanel)
@@ -74,13 +62,10 @@ class SalesApp:
         self.inventory_frame = ctk.CTkFrame(main_frame, fg_color='white')
         self.inventory_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        order_details_label = ctk.CTkLabel(self.order_frame, text="Sales Order Details:",
-                                           font=("Helvetica", 20, 'bold'),
-                                           text_color='black')
+        order_details_label = ctk.CTkLabel(self.order_frame, text="Sales Order Details:", font=("Helvetica", 20, 'bold'), text_color='black')
         order_details_label.pack(anchor=tk.W, pady=10)
 
-        self.sales_order_tree = ttk.Treeview(self.order_frame, columns=(
-            "ID", "Product Name", "Product ID", "Category", "Quantity", "Date", "Store Branch"), show='headings')
+        self.sales_order_tree = ttk.Treeview(self.order_frame, columns=("ID", "Product Name", "Product ID", "Category", "Quantity", "Date", "Store Branch"), show='headings')
         self.sales_order_tree.heading("ID", text="ID")
         self.sales_order_tree.heading("Product Name", text="Product Name")
         self.sales_order_tree.heading("Product ID", text="Product ID")
@@ -90,13 +75,10 @@ class SalesApp:
         self.sales_order_tree.heading("Store Branch", text="Store Branch")
         self.sales_order_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        inventory_details_label = ctk.CTkLabel(self.inventory_frame, text="Inventory:", font=("Helvetica", 20, 'bold'),
-                                               text_color='black')
+        inventory_details_label = ctk.CTkLabel(self.inventory_frame, text="Inventory:", font=("Helvetica", 20, 'bold'), text_color='black')
         inventory_details_label.pack(anchor=tk.W, pady=10)
 
-        self.inventory_tree = ttk.Treeview(self.inventory_frame, columns=(
-            "PRODUCT_REAL_ID", "DATE", "PRODUCT_NAME", "PRODUCT_ID", "STOCKS", "CATEGORY",
-            "PURCHASE_PRICE", "SELLING_PRICE", "LOCATION", "INTERNAL_REFERENCE"), show='headings')
+        self.inventory_tree = ttk.Treeview(self.inventory_frame, columns=("PRODUCT_REAL_ID", "DATE", "PRODUCT_NAME", "PRODUCT_ID", "STOCKS", "CATEGORY", "PURCHASE_PRICE", "SELLING_PRICE", "LOCATION", "INTERNAL_REFERENCE"), show='headings')
         self.inventory_tree.heading("PRODUCT_REAL_ID", text="Product Real ID")
         self.inventory_tree.heading("DATE", text="Date")
         self.inventory_tree.heading("PRODUCT_NAME", text="Product Name")
@@ -143,7 +125,14 @@ class SalesApp:
         title_label = ctk.CTkLabel(self.extra_window, text="ADD NEW SALES ORDER", font=("Helvetica", 20, 'bold'))
         title_label.pack(pady=20)
 
-        # Location Branch
+        quantity_frame = ctk.CTkFrame(self.extra_window)
+        quantity_frame.pack(pady=5, padx=10, fill=tk.X)
+        quantity_label = ctk.CTkLabel(quantity_frame, text="Quantity:")
+        quantity_label.pack(side=tk.LEFT)
+        self.quantity_var = tk.StringVar()
+        self.quantity_entry = ctk.CTkEntry(quantity_frame, textvariable=self.quantity_var)
+        self.quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+
         location_branch_frame = ctk.CTkFrame(self.extra_window)
         location_branch_frame.pack(pady=5, padx=10, fill=tk.X)
         location_branch_label = ctk.CTkLabel(location_branch_frame, text="Location Branch:")
@@ -156,22 +145,31 @@ class SalesApp:
         add_button.pack(pady=10)
 
     def add_sales_order(self):
+        quantity = int(self.quantity_var.get())
         location_branch = self.location_branch_var.get()
 
-        if location_branch:
+        if quantity > self.selected_quantity:
+            messagebox.showwarning('Error', 'Quantity exceeds available stocks.')
+            return
+
+        if quantity and location_branch:
             self.cursor.execute(
                 'INSERT INTO Sales_Orders (PRODUCT_NAME, PRODUCT_ID, CATEGORY, QUANTITY, DATE, STORE_BRANCH) VALUES ('
                 '?, ?, ?, ?, ?, ?)',
-                (self.selected_product_name, self.selected_product_id, self.selected_category, self.selected_quantity,
-                 self.selected_date,
-                 location_branch)
+                (self.selected_product_name, self.selected_product_id, self.selected_category, quantity, self.selected_date, location_branch)
+            )
+            new_stock_quantity = self.selected_quantity - quantity
+            self.cursor.execute(
+                'UPDATE Inventory SET STOCKS=? WHERE PRODUCT_ID=?',
+                (new_stock_quantity, self.selected_product_id)
             )
             self.connector.commit()
             self.load_sales_order_data()
+            self.load_inventory_data()
             messagebox.showinfo('Success', 'Sales order added successfully!')
             self.extra_window.destroy()
         else:
-            messagebox.showwarning('Error', 'Please fill in the location branch.')
+            messagebox.showwarning('Error', 'Please fill in all fields.')
 
     def delete_order(self):
         selected_item = self.sales_order_tree.selection()
@@ -218,8 +216,7 @@ class SalesApp:
 
     def add_notification(self, description):
         timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
-                            (description, timestamp))
+        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)', (description, timestamp))
         self.connector.commit()
         self.load_notifications()
 
@@ -237,8 +234,7 @@ class SalesApp:
 
         self.load_notifications()
 
-        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification)
+        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected", command=self.delete_selected_notification)
         delete_button.pack(pady=10)
 
     def delete_selected_notification(self):
@@ -248,8 +244,7 @@ class SalesApp:
             messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
             return
 
-        confirm_delete = messagebox.askyesno('Confirm Delete',
-                                             'Are you sure you want to delete the selected notification(s)?')
+        confirm_delete = messagebox.askyesno('Confirm Delete', 'Are you sure you want to delete the selected notification(s)?')
         if not confirm_delete:
             return
 
@@ -284,8 +279,7 @@ class SalesApp:
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
-
 if __name__ == "__main__":
     root = ctk.CTk()
-    app = SalesApp(root, "Admin")
+    app = SalesApp(root, "admin")
     root.mainloop()
