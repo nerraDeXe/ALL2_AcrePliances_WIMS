@@ -425,8 +425,11 @@ class PurchaseApp:
         # Add a notification about the completed order
         self.add_notification(f"Completed order for {name}")
 
+        # Show a message box to inform the user
+        messagebox.showinfo("Order Completed", f"The order for {name} has been successfully completed.")
+
     def generate_product_id(self, category):
-        self.cursor.execute('SELECT COUNT(*) FROM Orders WHERE CATEGORY=?', (category,))
+        self.cursor.execute('SELECT COUNT(*) FROM Purchase_Orders WHERE CATEGORY=?', (category,))
         count = self.cursor.fetchone()[0]
         product_id = f"{category[0].upper()}{count + 1:03d}"
         return product_id
