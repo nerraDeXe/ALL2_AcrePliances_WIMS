@@ -107,6 +107,17 @@ class Database:
                 FOREIGN KEY (username) REFERENCES users (username))
         ''')
 
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Shipped_Stock (
+            SHIPPED_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            PRODUCT_NAME TEXT,
+            PRODUCT_ID TEXT,
+            CATEGORY TEXT,
+            QUANTITY INTEGER,
+            DATE TEXT,
+            STORE_BRANCH TEXT,
+            SHIPPED_TIME TEXT)''')
+
         # Create product id counter
         self.cursor.execute('''
                 CREATE TABLE IF NOT EXISTS Product_Counter (
