@@ -42,7 +42,7 @@ class Database:
 
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS Inventory (
-                PRODUCT_REAL_ID INTEGER PRIMARY KEY,
+                PRODUCT_REAL_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 date DATE,
                 PRODUCT_NAME TEXT,
                 PRODUCT_ID TEXT,
@@ -106,6 +106,13 @@ class Database:
                 username TEXT NOT NULL UNIQUE,
                 FOREIGN KEY (username) REFERENCES users (username))
         ''')
+
+        # Create product id counter
+        self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Product_Counter (
+                    CATEGORY TEXT PRIMARY KEY,
+                    LAST_PRODUCT_ID INTEGER NOT NULL)
+                ''')
 
         self.conn.commit()
 
