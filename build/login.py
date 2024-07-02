@@ -1,5 +1,5 @@
 from pathlib import Path
-from tkinter import Tk, Canvas, Entry, Button, PhotoImage, Checkbutton, BooleanVar, messagebox
+from tkinter import Tk, Canvas, Entry, Button, PhotoImage, messagebox, BooleanVar
 from PIL import Image, ImageTk
 import sv_ttk
 import sqlite3
@@ -72,7 +72,7 @@ class Database:
                 PRODUCT_ID TEXT,
                 CATEGORY TEXT,
                 QUANTITY INTEGER,
-                DATETIME DATETIME,
+                DATE date,
                 STORE_BRANCH TEXT)
         ''')
 
@@ -90,12 +90,6 @@ class Database:
                 NOTIFICATION_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 DESCRIPTION TEXT,
                 TIMESTAMP DATETIME DEFAULT CURRENT_TIMESTAMP)
-        ''')
-
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS task_batches (
-                batch_id INTEGER PRIMARY KEY,
-                description TEXT NOT NULL)
         ''')
 
         # Create separate tables for supervisors and workers
@@ -126,6 +120,7 @@ class Database:
 class LoginApp:
     def __init__(self, root):
         self.root = root
+        self.root.title('ACREPLIANCES LOGIN')
         self.db = Database()
         self.setup_ui()
 
@@ -170,26 +165,33 @@ class LoginApp:
 
     def create_entries(self):
         self.entry_bg_1 = PhotoImage(file=self.relative_to_assets("entry_1.png"))
-        self.canvas.create_image(619.5, 339.5, image=self.entry_bg_1)
-        self.entry_password = Entry(bd=0, bg="#D9D9D9", fg="#000716", highlightthickness=0, show='*')
-        self.entry_password.place(x=478.0, y=315.0, width=283.0, height=47.0)
+        self.canvas.create_image(619.5, 235.5, image=self.entry_bg_1)
+        self.entry_username = Entry(bd=0, bg="#D9D9D9", fg="#000716", highlightthickness=0)
+        self.entry_username.place(x=478.0, y=208.5, width=290.0, height=47.0)
 
         self.entry_bg_2 = PhotoImage(file=self.relative_to_assets("entry_2.png"))
-        self.canvas.create_image(619.5, 235.5, image=self.entry_bg_2)
-        self.entry_username = Entry(bd=0, bg="#D9D9D9", fg="#000716", highlightthickness=0)
-        self.entry_username.place(x=478.0, y=211.0, width=283.0, height=47.0)
+        self.canvas.create_image(619.5, 339.5, image=self.entry_bg_2)
+        self.entry_password = Entry(bd=0, bg="#D9D9D9", fg="#000716", highlightthickness=0, show='*')
+        self.entry_password.place(x=478.0, y=313.0, width=290.0, height=47.0)
 
-        self.show_password = BooleanVar()
-        self.checkbutton = Checkbutton(self.root, text="Show Password", variable=self.show_password,
-                                       command=self.toggle_password, bg='#C30000', fg='white')
-        self.checkbutton.place(x=560.0, y=370.0)
+        # Load icons for password visibility toggle
+        self.show_icon = ImageTk.PhotoImage(Image.open("show_password.png"))
+        self.hide_icon = ImageTk.PhotoImage(Image.open("hide_password.png"))
+
+        self.show_password_var = BooleanVar(value=True)
+        self.user_toggle_button = Button(self.root, image=self.show_icon,
+                                         command=lambda: self.new_user_toggle_password(self.entry_password,
+                                                                                       self.show_password_var,
+                                                                                       self.user_toggle_button),
+                                         borderwidth=0, highlightthickness=1, relief="flat", bg='#C30000')
+        self.user_toggle_button.place(x=790, y=320, width=30, height=30)
 
     def create_buttons(self):
         self.button_image_1 = PhotoImage(file=self.relative_to_assets("button_1.png"))
         self.button_1 = Button(image=self.button_image_1, borderwidth=0, highlightthickness=0,
                                command=self.validate_login, relief="flat",
                                bg='#C40000', activebackground='#C40000')
-        self.button_1.place(x=544.0, y=410.0, width=147.0, height=40.0)
+        self.button_1.place(x=544.0, y=390.0, width=147.0, height=40.0)
 
     def relative_to_assets(self, path: str) -> Path:
         output_path = Path(__file__).parent
@@ -199,11 +201,14 @@ class LoginApp:
     def hash_password(self, password):
         return hashlib.sha256(password.encode()).hexdigest()
 
-    def toggle_password(self):
-        if self.show_password.get():
-            self.entry_password.config(show='')
+    def new_user_toggle_password(self, password_entry, show_password_var, toggle_button):
+        if show_password_var.get():
+            password_entry.config(show='*')
+            toggle_button.config(image=self.show_icon)
         else:
-            self.entry_password.config(show='*')
+            password_entry.config(show='')
+            toggle_button.config(image=self.hide_icon)
+        show_password_var.set(not show_password_var.get())
 
     def validate_login(self):
         username = self.entry_username.get()
@@ -218,18 +223,17 @@ class LoginApp:
             self.root.destroy()
             subprocess.run(["python", "admin_panel.py", username])
         elif result:
-            if result:
-                role = result[0]
-                if role == 'Supervisor':
-                    messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
-                    self.root.quit()
-                    self.root.destroy()
-                    subprocess.run(["python", "supervisor_panel.py", username])
-                elif role == 'Worker':
-                    messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
-                    self.root.quit()
-                    self.root.destroy()
-                    subprocess.run(["python", "worker_panel.py", username])
+            role = result[0]
+            if role == 'Supervisor':
+                messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
+                self.root.quit()
+                self.root.destroy()
+                subprocess.run(["python", "supervisor_panel.py", username])
+            elif role == 'Worker':
+                messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
+                self.root.quit()
+                self.root.destroy()
+                subprocess.run(["python", "worker_panel.py", username])
         else:
             messagebox.showerror("Login Failed", "Invalid username or password.")
 
