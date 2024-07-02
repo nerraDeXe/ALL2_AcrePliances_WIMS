@@ -1,321 +1,262 @@
-import subprocess
-import tkinter as tk
-import customtkinter as ctk
-from tkinter import ttk, messagebox
-import sqlite3
-from datetime import datetime
+from pathlib import Path
+from tkinter import Tk, Canvas, Entry, Button, PhotoImage, messagebox, BooleanVar
 from PIL import Image, ImageTk
-import pytz
+import sv_ttk
+import sqlite3
+import hashlib
+import subprocess
 
 
-class SalesApp:
-    def __init__(self, root, username):
-        self.connector = sqlite3.connect('AcrePliances.db')
-        self.cursor = self.connector.cursor()
-        self.connector.commit()
+class Database:
+    def __init__(self, db_name='AcrePliances.db'):
+        self.conn = sqlite3.connect(db_name)
+        self.cursor = self.conn.cursor()
+        self.create_table()
 
+    def create_table(self):
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                USER_REAL_ID INTEGER PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL CHECK(role IN ('Administrator', 'Supervisor', 'Worker'))
+            )
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS roles (
+                role_id INTEGER PRIMARY KEY,
+                role_name TEXT NOT NULL UNIQUE)
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS tasks (
+                task_id INTEGER PRIMARY KEY,
+                task_name TEXT NOT NULL,
+                task_description TEXT,
+                assigned_to TEXT NOT NULL,
+                status TEXT,
+                deadline DATE,
+                FOREIGN KEY (assigned_to) REFERENCES workers (username))
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Inventory (
+                PRODUCT_REAL_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                date DATE,
+                PRODUCT_NAME TEXT,
+                PRODUCT_ID TEXT,
+                STOCKS INTEGER,
+                CATEGORY VARCHAR(30),
+                PURCHASE_PRICE FLOAT,
+                SELLING_PRICE FLOAT,
+                LOCATION VARCHAR(30),
+                INTERNAL_REFERENCE VARCHAR(30))
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Purchase_Orders (
+                PURCHASE_ORDER_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                PRODUCT_NAME VARCHAR(20),
+                CATEGORY TEXT,
+                QUANTITY INTEGER,
+                VENDOR_ID INTEGER,
+                DATETIME DATETIME,
+                FOREIGN KEY(VENDOR_ID) REFERENCES Vendors(VENDOR_ID))
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Sales_Orders (
+                ORDER_ID INTEGER PRIMARY KEY,
+                PRODUCT_NAME VARCHAR(20),
+                PRODUCT_ID TEXT,
+                CATEGORY TEXT,
+                QUANTITY INTEGER,
+                DATE date,
+                STORE_BRANCH TEXT)
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Vendors (
+                VENDOR_ID INTEGER PRIMARY KEY,
+                NAME VARCHAR(20),
+                EMAIL VARCHAR(20),
+                PHONE_NUMBER VARCHAR(10),
+                COMPANY VARCHAR(20))
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Notifications (
+                NOTIFICATION_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                DESCRIPTION TEXT,
+                TIMESTAMP DATETIME DEFAULT CURRENT_TIMESTAMP)
+        ''')
+
+        # Create separate tables for supervisors and workers
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS supervisors (
+                supervisor_id INTEGER PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                FOREIGN KEY (username) REFERENCES users (username))
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS workers (
+                worker_id INTEGER PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                FOREIGN KEY (username) REFERENCES users (username))
+        ''')
+
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Shipped_Stock (
+            SHIPPED_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            PRODUCT_NAME TEXT,
+            PRODUCT_ID TEXT,
+            CATEGORY TEXT,
+            QUANTITY INTEGER,
+            DATE TEXT,
+            STORE_BRANCH TEXT,
+            SHIPPED_TIME TEXT)''')
+
+        # Create product id counter
+        self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Product_Counter (
+                    CATEGORY TEXT PRIMARY KEY,
+                    LAST_PRODUCT_ID INTEGER NOT NULL)
+                ''')
+
+        self.conn.commit()
+
+    def fetch_user_role(self, username, hashed_password):
+        self.cursor.execute("SELECT role FROM users WHERE username=? AND password=?", (username, hashed_password))
+        return self.cursor.fetchone()
+
+    def close(self):
+        self.conn.close()
+
+
+class LoginApp:
+    def __init__(self, root):
         self.root = root
-        self.username = username
-        self.root.title('Sales Order Management')
-        self.root.geometry('1280x850')
-        self.root.configure(bg='#BF2C37')
-        self.root.resizable(0, 0)
+        self.root.title('ACREPLIANCES LOGIN')
+        self.db = Database()
+        self.setup_ui()
 
+        self.fixed_admin_username = "admin"
+        self.fixed_admin_password = "admin123"
+
+    def setup_ui(self):
+        self.root.geometry("901x540")
+        self.root.configure(bg="#FFFFFF")
+
+        self.canvas = Canvas(self.root, bg="#FFFFFF", height=540, width=901, bd=0, highlightthickness=0, relief="ridge")
+        self.canvas.place(x=0, y=0)
+
+        self.load_images()
         self.create_widgets()
-        self.load_sales_order_data()
-        self.load_inventory_data()
+        self.create_entries()
+        self.create_buttons()
+
+        sv_ttk.set_theme("light")
+        self.root.resizable(False, False)
+
+    def load_images(self):
+        self.image_1 = PhotoImage(file=self.relative_to_assets("image_1.png"))
+        self.canvas.create_image(450.0, 270.0, image=self.image_1)
+
+        self.canvas.create_rectangle(338.0, 0.0, 901.0, 540.0, fill="#C30000", outline="")
+
+        image_path = self.relative_to_assets("default-monochrome.png")
+        original_image = Image.open(image_path)
+        width, height = original_image.size
+        resized_image = original_image.resize((width // 2, height // 2), Image.LANCZOS)
+        self.acre_app = ImageTk.PhotoImage(resized_image)
+        self.canvas.create_image(620.0, 100.0, image=self.acre_app)
 
     def create_widgets(self):
-        top_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
-        top_frame.pack(side=tk.TOP, fill=tk.X)
+        self.canvas.create_text(468.0, 280.0, anchor="nw", text="Password", fill="#FFFFFF",
+                                font=("Microsoft YaHei UI Light", 15))
+        self.canvas.create_text(468.0, 172.0, anchor="nw", text="Username", fill="#FFFFFF",
+                                font=("Microsoft YaHei UI Light", 15))
+        self.canvas.create_text(468.0, 130.0, anchor="nw", text="WAREHOUSE INVENTORY MANAGEMENT SYSTEM", fill="#FFFFFF",
+                                font=("Microsoft YaHei UI Light", 10))
 
-        title_label = ctk.CTkLabel(top_frame, text="SALES ORDER MANAGEMENT", font=("Helvetica", 16), text_color='white')
-        title_label.pack(side=tk.LEFT, padx=20, pady=20)
+    def create_entries(self):
+        self.entry_bg_1 = PhotoImage(file=self.relative_to_assets("entry_1.png"))
+        self.canvas.create_image(619.5, 235.5, image=self.entry_bg_1)
+        self.entry_username = Entry(bd=0, bg="#D9D9D9", fg="#000716", highlightthickness=0)
+        self.entry_username.place(x=478.0, y=208.5, width=290.0, height=47.0)
 
+        self.entry_bg_2 = PhotoImage(file=self.relative_to_assets("entry_2.png"))
+        self.canvas.create_image(619.5, 339.5, image=self.entry_bg_2)
+        self.entry_password = Entry(bd=0, bg="#D9D9D9", fg="#000716", highlightthickness=0, show='*')
+        self.entry_password.place(x=478.0, y=313.0, width=290.0, height=47.0)
 
-        self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
-        self.notification_button = tk.Button(top_frame, image=self.notification_image, bg='white', activebackground='darkred', command=self.show_notifications_window)
-        self.notification_button.pack(side=tk.RIGHT, padx=20, pady=20)
+        # Load icons for password visibility toggle
+        self.show_icon = ImageTk.PhotoImage(Image.open("show_password.png"))
+        self.hide_icon = ImageTk.PhotoImage(Image.open("hide_password.png"))
 
-        left_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
-        left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=20)
+        self.show_password_var = BooleanVar(value=True)
+        self.user_toggle_button = Button(self.root, image=self.show_icon,
+                                         command=lambda: self.new_user_toggle_password(self.entry_password,
+                                                                                       self.show_password_var,
+                                                                                       self.user_toggle_button),
+                                         borderwidth=0, highlightthickness=1, relief="flat", bg='#C30000')
+        self.user_toggle_button.place(x=790, y=320, width=30, height=30)
 
-        self.add_sales_order_button = ctk.CTkButton(left_frame, text="ADD SALES ORDER", fg_color='#FFFFFF', text_color='#000000', command=self.create_sales_order_window)
-        self.add_sales_order_button.pack(pady=10)
+    def create_buttons(self):
+        self.button_image_1 = PhotoImage(file=self.relative_to_assets("button_1.png"))
+        self.button_1 = Button(image=self.button_image_1, borderwidth=0, highlightthickness=0,
+                               command=self.validate_login, relief="flat",
+                               bg='#C40000', activebackground='#C40000')
+        self.button_1.place(x=544.0, y=390.0, width=147.0, height=40.0)
 
-        self.delete_sales_order_button = ctk.CTkButton(left_frame, text="DELETE SALES ORDER", fg_color='#FFFFFF', text_color='#000000', command=self.delete_order)
-        self.delete_sales_order_button.pack(pady=10)
+    def relative_to_assets(self, path: str) -> Path:
+        output_path = Path(__file__).parent
+        assets_path = output_path / "assets/frame0"
+        return assets_path / Path(path)
 
-        self.complete_order_button = ctk.CTkButton(left_frame, text="COMPLETE ORDER", fg_color='#FFFFFF', text_color='#000000', command=self.complete_sales_order)
-        self.complete_order_button.pack(pady=10)
+    def hash_password(self, password):
+        return hashlib.sha256(password.encode()).hexdigest()
 
-        self.back_button = ctk.CTkButton(left_frame, text="Back", command=self.close_subpanel)
-        self.back_button.pack(side=tk.BOTTOM, pady=20)
-
-        main_frame = ctk.CTkFrame(self.root, fg_color='white')
-        main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=20)
-
-        self.order_frame = ctk.CTkFrame(main_frame, fg_color='white')
-        self.order_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        self.inventory_frame = ctk.CTkFrame(main_frame, fg_color='white')
-        self.inventory_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        order_details_label = ctk.CTkLabel(self.order_frame, text="Sales Order Details:", font=("Helvetica", 20, 'bold'), text_color='black')
-        order_details_label.pack(anchor=tk.W, pady=10)
-
-        self.sales_order_tree = ttk.Treeview(self.order_frame, columns=("ID", "Product Name", "Product ID", "Category", "Quantity", "Date", "Store Branch"), show='headings')
-        self.sales_order_tree.heading("ID", text="ID")
-        self.sales_order_tree.heading("Product Name", text="Product Name")
-        self.sales_order_tree.heading("Product ID", text="Product ID")
-        self.sales_order_tree.heading("Category", text="Category")
-        self.sales_order_tree.heading("Quantity", text="Quantity")
-        self.sales_order_tree.heading("Date", text="Date")
-        self.sales_order_tree.heading("Store Branch", text="Store Branch")
-
-
-        self.sales_order_tree.column("ID", width=50, stretch=tk.NO)
-        self.sales_order_tree.column("Product Name", width=280, stretch=tk.NO)
-        self.sales_order_tree.column("Product ID", width=100, stretch=tk.NO)
-        self.sales_order_tree.column("Category", width=150, stretch=tk.NO)
-        self.sales_order_tree.column("Quantity", width=100, stretch=tk.NO)
-        self.sales_order_tree.column("Date", width=194, stretch=tk.NO)
-        self.sales_order_tree.column("Store Branch", width=200, stretch=tk.NO)
-
-        self.sales_order_tree.pack(fill=tk.BOTH, expand=False, padx=10, pady=10)
-
-        inventory_details_label = ctk.CTkLabel(self.inventory_frame, text="Inventory:", font=("Helvetica", 20, 'bold'), text_color='black')
-        inventory_details_label.pack(anchor=tk.W, pady=10)
-
-        self.inventory_tree = ttk.Treeview(self.inventory_frame, columns=("PRODUCT_REAL_ID", "DATE", "PRODUCT_NAME", "PRODUCT_ID", "STOCKS", "CATEGORY", "PURCHASE_PRICE", "SELLING_PRICE", "LOCATION", "INTERNAL_REFERENCE"), show='headings')
-        self.inventory_tree.heading("PRODUCT_REAL_ID", text="Product Real ID")
-        self.inventory_tree.heading("DATE", text="Date")
-        self.inventory_tree.heading("PRODUCT_NAME", text="Product Name")
-        self.inventory_tree.heading("PRODUCT_ID", text="Product ID")
-        self.inventory_tree.heading("STOCKS", text="Stocks")
-        self.inventory_tree.heading("CATEGORY", text="Category")
-        self.inventory_tree.heading("PURCHASE_PRICE", text="Purchase Price")
-        self.inventory_tree.heading("SELLING_PRICE", text="Selling Price")
-        self.inventory_tree.heading("LOCATION", text="Location")
-        self.inventory_tree.heading("INTERNAL_REFERENCE", text="Internal Reference")
-        self.inventory_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        self.inventory_tree.column("PRODUCT_REAL_ID", width=0, stretch=tk.NO)
-
-        # Adjust column widths
-        self.adjust_column_widths()
-
-    def adjust_column_widths(self):
-        # Calculate available width for remaining columns
-        total_width = self.inventory_frame.winfo_width()
-        visible_columns = [col for col in self.inventory_tree["columns"] if col != "PRODUCT_REAL_ID"]
-        column_count = len(visible_columns)
-
-        if column_count > 0 and total_width > 0:
-            equal_width = total_width // column_count
-
-            for col in visible_columns:
-                self.inventory_tree.column(col, width=equal_width)
-
-    def close_subpanel(self):
-        self.root.destroy()  # Close the main window and all associated frames
-
-    def load_sales_order_data(self):
-        self.sales_order_tree.delete(*self.sales_order_tree.get_children())
-
-        self.cursor.execute('SELECT * FROM Sales_Orders')
-        rows = self.cursor.fetchall()
-
-        for row in rows:
-            self.sales_order_tree.insert('', 'end', values=row)
-
-    def create_sales_order_window(self):
-        selected_item = self.inventory_tree.selection()
-        if not selected_item:
-            messagebox.showwarning('Error', 'Please select an inventory item before adding a sales order.')
-            return
-
-        inventory_item = self.inventory_tree.item(selected_item)['values']
-        self.selected_product_name = inventory_item[2]
-        self.selected_product_id = inventory_item[3]
-        self.selected_category = inventory_item[5]
-        self.selected_quantity = inventory_item[4]
-        self.selected_date = inventory_item[1]
-
-        self.extra_window = ctk.CTkToplevel(self.root)
-        self.extra_window.title('Add Sales Order')
-        self.extra_window.geometry('400x500')
-
-        title_label = ctk.CTkLabel(self.extra_window, text="ADD NEW SALES ORDER", font=("Helvetica", 20, 'bold'))
-        title_label.pack(pady=20)
-
-        quantity_frame = ctk.CTkFrame(self.extra_window)
-        quantity_frame.pack(pady=5, padx=10, fill=tk.X)
-        quantity_label = ctk.CTkLabel(quantity_frame, text="Quantity:")
-        quantity_label.pack(side=tk.LEFT)
-        self.quantity_var = tk.StringVar()
-        self.quantity_entry = ctk.CTkEntry(quantity_frame, textvariable=self.quantity_var)
-        self.quantity_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
-
-        location_branch_frame = ctk.CTkFrame(self.extra_window)
-        location_branch_frame.pack(pady=5, padx=10, fill=tk.X)
-        location_branch_label = ctk.CTkLabel(location_branch_frame, text="Location Branch:")
-        location_branch_label.pack(side=tk.LEFT)
-
-        branches = [
-            "AcrePliances Penang",
-            "AcrePliances Kedah",
-            "AcrePliances Perlis",
-            "AcrePliances Perak",
-            "AcrePliances Kelantan",
-            "AcrePliances Terengganu",
-            "AcrePliances Pahang",
-            "AcrePliances Johor",
-            "AcrePliances Melaka",
-            "AcrePliances Negeri Sembilan"
-        ]
-        self.location_branch_var = tk.StringVar()
-        self.location_branch_combobox = ttk.Combobox(location_branch_frame, textvariable=self.location_branch_var, values=branches)
-        self.location_branch_combobox.pack(side=tk.RIGHT, fill=tk.X, expand=True)
-
-        add_button = ctk.CTkButton(self.extra_window, text="Add Order", command=self.add_sales_order)
-        add_button.pack(pady=10)
-
-    def add_sales_order(self):
-        quantity = int(self.quantity_var.get())
-        location_branch = self.location_branch_var.get()
-
-        if quantity > self.selected_quantity:
-            messagebox.showwarning('Error', 'Quantity exceeds available stocks.')
-            return
-
-        if quantity and location_branch:
-            self.cursor.execute(
-                'INSERT INTO Sales_Orders (PRODUCT_NAME, PRODUCT_ID, CATEGORY, QUANTITY, DATE, STORE_BRANCH) VALUES ('
-                '?, ?, ?, ?, ?, ?)',
-                (self.selected_product_name, self.selected_product_id, self.selected_category, quantity, self.selected_date, location_branch)
-            )
-            self.cursor.execute(
-                'UPDATE Inventory SET STOCKS = STOCKS - ? WHERE PRODUCT_ID = ?',
-                (quantity, self.selected_product_id)
-            )
-            self.connector.commit()
-            self.load_sales_order_data()
-            self.load_inventory_data()
-            self.extra_window.destroy()
-            messagebox.showinfo('Success', 'Sales order added successfully!')
+    def new_user_toggle_password(self, password_entry, show_password_var, toggle_button):
+        if show_password_var.get():
+            password_entry.config(show='*')
+            toggle_button.config(image=self.show_icon)
         else:
-            messagebox.showwarning('Error', 'Please fill in all the details.')
+            password_entry.config(show='')
+            toggle_button.config(image=self.hide_icon)
+        show_password_var.set(not show_password_var.get())
 
-    def delete_order(self):
-        selected_item = self.sales_order_tree.selection()
-        if not selected_item:
-            messagebox.showwarning('Error', 'Please select a sales order to delete.')
-            return
+    def validate_login(self):
+        username = self.entry_username.get()
+        password = self.entry_password.get()
+        hashed_password = self.hash_password(password)
 
-        confirm = messagebox.askyesno('Confirm Delete', 'Are you sure you want to delete the selected sales order?')
-        if not confirm:
-            return
+        result = self.db.fetch_user_role(username, hashed_password)
 
-        order_id = self.sales_order_tree.item(selected_item)['values'][0]
-        self.cursor.execute('DELETE FROM Sales_Orders WHERE ORDER_ID=?', (order_id,))
-        self.connector.commit()
-        self.load_sales_order_data()
-        messagebox.showinfo('Success', 'Sales order deleted successfully!')
+        if username == self.fixed_admin_username and password == self.fixed_admin_password:
+            messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is Administrator.")
+            self.root.quit()
+            self.root.destroy()
+            subprocess.run(["python", "admin_panel.py", username])
+        elif result:
+            role = result[0]
+            if role == 'Supervisor':
+                messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
+                self.root.quit()
+                self.root.destroy()
+                subprocess.run(["python", "supervisor_panel.py", username])
+            elif role == 'Worker':
+                messagebox.showinfo("Login Successful", f"Welcome {username}! Your role is {role}.")
+                self.root.quit()
+                self.root.destroy()
+                subprocess.run(["python", "worker_panel.py", username])
+        else:
+            messagebox.showerror("Login Failed", "Invalid username or password.")
 
-    def load_inventory_data(self):
-        self.inventory_tree.delete(*self.inventory_tree.get_children())
-
-        self.cursor.execute("SELECT * FROM Inventory WHERE LOCATION='Storage Area'")
-        rows = self.cursor.fetchall()
-
-        for row in rows:
-            self.inventory_tree.insert('', 'end', values=row)
-
-    def complete_sales_order(self):
-        selected_item = self.sales_order_tree.selection()
-        if not selected_item:
-            messagebox.showwarning('Error', 'Please select a sales order to complete.')
-            return
-
-        order_id = self.sales_order_tree.item(selected_item)['values'][0]
-
-        confirm = messagebox.askyesno('Confirm Complete', 'Are you sure you want to complete the selected sales order?')
-        if not confirm:
-            return
-
-        self.cursor.execute('DELETE FROM Sales_Orders WHERE ORDER_ID=?', (order_id,))
-        self.connector.commit()
-        self.load_sales_order_data()
-        self.load_inventory_data()
-        messagebox.showinfo('Success', 'Sales order completed successfully!')
-
-    def add_notification(self, description):
-        timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)', (description, timestamp))
-        self.connector.commit()
-        self.load_notifications()
-
-    def show_notifications_window(self):
-        self.notification_window = ctk.CTkToplevel(self.root)
-        self.notification_window.title('Notifications')
-        self.notification_window.geometry('500x400')
-        self.notification_window.resizable(0, 0)
-
-        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications", font=("Helvetica", 14))
-        notification_label.pack(pady=20)
-
-        self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
-        self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        self.load_notifications()
-
-        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected", command=self.delete_selected_notification)
-        delete_button.pack(pady=10)
-
-    def delete_selected_notification(self):
-        selected_indices = self.NOTIFICATION_LIST.curselection()
-
-        if not selected_indices:
-            messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
-            return
-
-        confirm_delete = messagebox.askyesno('Confirm Delete', 'Are you sure you want to delete the selected notification(s)?')
-        if not confirm_delete:
-            return
-
-        for index in selected_indices:
-            try:
-                notification_id = self.notification_ids[index]
-                self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
-                self.connector.commit()
-            except sqlite3.Error as e:
-                messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
-                return
-
-        self.load_notifications()
-
-    def load_notifications(self):
-        try:
-            self.NOTIFICATION_LIST.delete(0, tk.END)
-            self.notification_ids = {}
-            self.cursor.execute("SELECT * FROM Notifications")
-            notifications = self.cursor.fetchall()
-
-            for idx, notification in enumerate(notifications):
-                timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
-                utc_timezone = pytz.utc
-                local_timezone = pytz.timezone('Asia/Singapore')
-                utc_timestamp = utc_timezone.localize(timestamp)
-                local_timestamp = utc_timestamp.astimezone(local_timezone)
-                formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
-                self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
-                self.notification_ids[idx] = notification[0]
-        except sqlite3.Error as e:
-            messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
 if __name__ == "__main__":
-    root = ctk.CTk()
-    app = SalesApp(root, "admin")
+    root = Tk()
+    app = LoginApp(root)
     root.mainloop()
