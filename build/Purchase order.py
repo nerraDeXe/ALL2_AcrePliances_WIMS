@@ -6,7 +6,9 @@ import sqlite3
 from datetime import datetime, date
 from PIL import Image, ImageTk
 import pytz
-
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
 
 class PurchaseApp:
     def __init__(self, root, username):
@@ -49,10 +51,6 @@ class PurchaseApp:
         title_label = ctk.CTkLabel(top_frame, text="PURCHASE ORDER MANAGEMENT", font=("Helvetica", 16),
                                    text_color='white')
         title_label.pack(side=tk.LEFT, padx=20, pady=20)
-
-        welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12),
-                                     text_color='white')
-        welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
 
         # Add notification button
         self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
@@ -141,6 +139,7 @@ class PurchaseApp:
 
         for row in rows:
             self.order_tree.insert('', 'end', values=row)
+
 
     def create_purchase_order_window(self):
         self.extra_window = ctk.CTkToplevel(self.root)
@@ -397,8 +396,8 @@ class PurchaseApp:
         name = self.name_entry.get()
         category = self.category_var.get()
         quantity = self.quantity_entry.get()
-        purchase_price = self.purchase_price_entry.get()
-        selling_price = self.selling_price_entry.get()
+        purchase_price = float(self.purchase_price_entry.get())
+        selling_price = float(self.selling_price_entry.get())
         product_id = self.generate_product_id(category)
         location = 'Staging Area'
         location_prefix = 'STA'
@@ -427,6 +426,31 @@ class PurchaseApp:
 
         # Show a message box to inform the user
         messagebox.showinfo("Order Completed", f"The order for {name} has been successfully completed.")
+
+        # Generate PDF report
+        self.generate_pdf_report(order[0], name, category, quantity, purchase_price, selling_price, current_date)
+
+    def generate_pdf_report(self, order_id, name, category, quantity, purchase_price, selling_price, date):
+        report_name = f"Order_{order_id}_Report.pdf"
+        c = canvas.Canvas(report_name, pagesize=letter)
+        width, height = letter
+
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(30, height - 50, "Purchase Order Report")
+
+        c.setFont("Helvetica", 12)
+        c.drawString(30, height - 100, f"Order ID: {order_id}")
+        c.drawString(30, height - 120, f"Product Name: {name}")
+        c.drawString(30, height - 140, f"Category: {category}")
+        c.drawString(30, height - 160, f"Quantity: {quantity}")
+        c.drawString(30, height - 180, f"Purchase Price: {purchase_price}")
+        c.drawString(30, height - 200, f"Selling Price: {selling_price}")
+        c.drawString(30, height - 220, f"Date: {date}")
+        # c.drawString(30, height - 240, f"Total Purchase Price: {total_purchase_price}")
+
+        c.save()
+        messagebox.showinfo("Report Generated",
+                            f"The report for order {order_id} has been generated and saved as {report_name}.")
 
     def generate_product_id(self, category):
         # Check if the category already exists in the counter table
