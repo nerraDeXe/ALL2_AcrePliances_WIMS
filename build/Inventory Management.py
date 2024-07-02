@@ -1,7 +1,7 @@
 import datetime
 import tkinter as tk
 import customtkinter as ctk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, Menu
 import sqlite3
 from datetime import datetime
 from PIL import Image, ImageTk
@@ -19,13 +19,14 @@ class InventoryApp:
 
         self.root = root
         self.username = username
-        self.root.title('Sales Order Management')
+        self.root.title('Inventory Management')
         self.root.geometry('1280x850')
         self.root.configure(bg='#BF2C37')
         self.root.resizable(0, 0)
 
         self.setup_variables()
         self.create_widgets()
+        self.detached_items = []
         self.load_inventory_data()
 
     def setup_variables(self):
@@ -46,13 +47,9 @@ class InventoryApp:
         top_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         top_frame.pack(side=tk.TOP, fill=tk.X)
 
-        title_label = ctk.CTkLabel(top_frame, text="SALES ORDER MANAGEMENT", font=("Helvetica", 16),
+        title_label = ctk.CTkLabel(top_frame, text="INVENTORY", font=("Helvetica", 16),
                                    text_color='white')
         title_label.pack(side=tk.LEFT, padx=20, pady=20)
-
-        welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12),
-                                     text_color='white')
-        welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
 
         # Add notification button
         self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
@@ -87,7 +84,6 @@ class InventoryApp:
         self.inventory_frame = ctk.CTkFrame(main_frame, fg_color='white')
         self.inventory_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-
         inventory_details_label = ctk.CTkLabel(self.inventory_frame, text="Inventory:", font=("Helvetica", 20, 'bold'),
                                                text_color='black')
         inventory_details_label.pack(anchor=tk.W, pady=10)
@@ -108,6 +104,85 @@ class InventoryApp:
         self.inventory_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         self.inventory_tree.column("PRODUCT_REAL_ID", width=0, stretch=tk.NO)
+
+        # Adjust column widths
+        self.adjust_column_widths()
+
+        # Right-click menu for header
+        self.header_menu = Menu(self.root, tearoff=0)
+        self.header_menu.add_command(label="Filter", command=self.filter_by_column)
+
+        # Bind right-click to show context menu
+        self.inventory_tree.bind("<Button-3>", self.show_header_menu)
+
+        # Bind resize event to adjust column widths dynamically
+        self.root.bind("<Configure>", self.on_resize)
+
+    def adjust_column_widths(self):
+        # Calculate available width for remaining columns
+        total_width = self.inventory_frame.winfo_width()
+        visible_columns = [col for col in self.inventory_tree["columns"] if col != "PRODUCT_REAL_ID"]
+        column_count = len(visible_columns)
+
+        if column_count > 0 and total_width > 0:
+            equal_width = total_width // column_count
+
+            for col in visible_columns:
+                self.inventory_tree.column(col, width=equal_width)
+
+    def show_header_menu(self, event):
+        # Find the column heading that was clicked
+        region = self.inventory_tree.identify("region", event.x, event.y)
+        if (region == "heading"):
+            col = self.inventory_tree.identify_column(event.x)
+            self.selected_column = self.inventory_tree.heading(col)["text"]
+            self.update_header_menu(col)
+            self.header_menu.post(event.x_root, event.y_root)
+
+    def update_header_menu(self, col):
+        # Clear previous menu items
+        self.header_menu.delete(0, tk.END)
+
+        # Add submenu for unique items
+        unique_items_menu = Menu(self.header_menu, tearoff=0)
+        unique_items = self.get_unique_items(col)
+
+        for item in unique_items:
+            unique_items_menu.add_command(label=item, command=lambda value=item: self.filter_by_column(value))
+
+        self.header_menu.add_cascade(label="Filter by", menu=unique_items_menu)
+        self.header_menu.add_command(label="Show All", command=self.show_all)
+
+    def get_unique_items(self, col):
+        # Get unique items in the specified column
+        col_index = int(col.replace('#', '')) - 1
+        items = set()
+
+        for child in self.inventory_tree.get_children():
+            item = self.inventory_tree.item(child, 'values')[col_index]
+            items.add(item)
+
+        return sorted(items)
+
+    def filter_by_column(self, filter_value):
+        col_index = self.inventory_tree["columns"].index(self.selected_column.upper().replace(" ", "_"))
+
+        self.detached_items = []  # Clear the detached items list
+
+        for item in self.inventory_tree.get_children():
+            values = self.inventory_tree.item(item, 'values')
+            if values[col_index] != filter_value:
+                self.detached_items.append(item)
+                self.inventory_tree.detach(item)
+
+    def show_all(self):
+        for item in self.detached_items:
+            self.inventory_tree.reattach(item, '', 'end')
+        self.detached_items = []  # Clear the detached items list
+
+    def on_resize(self, event):
+        # Adjust column widths dynamically on window resize
+        self.adjust_column_widths()
 
     def close_subpanel(self):
         self.root.destroy()  # Close the main window and all associated frames
