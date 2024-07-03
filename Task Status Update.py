@@ -2,11 +2,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import customtkinter as ctk
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import sqlite3
 import pytz
-from tkcalendar import DateEntry
-import subprocess
 import sys
 
 
@@ -14,6 +12,7 @@ class WorkerApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect("AcrePliances.db")
         self.cursor = self.connector.cursor()
+        self.create_notifications_table()
 
         self.username = username
         self.root = root
@@ -25,6 +24,9 @@ class WorkerApp:
         self.create_main_window()
         self.load_tasks()
 
+        # Schedule the periodic task check
+        self.check_upcoming_tasks()
+
     def create_main_window(self):
         top_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         top_frame.pack(side=tk.TOP, fill=tk.X)
@@ -32,7 +34,6 @@ class WorkerApp:
         title_label = ctk.CTkLabel(top_frame, text="WORKER TASK UPDATE", font=("Helvetica", 16, 'bold'),
                                    text_color='white')
         title_label.pack(side=tk.LEFT, padx=20, pady=20)
-
 
         self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
 
@@ -94,7 +95,7 @@ class WorkerApp:
     def load_tasks(self):
         for i in self.task_tree.get_children():
             self.task_tree.delete(i)
-        self.cursor.execute("SELECT * FROM tasks WHERE assigned_to=?", (username,))
+        self.cursor.execute("SELECT * FROM tasks WHERE assigned_to=?", (self.username,))
         rows = self.cursor.fetchall()
         for row in rows:
             self.task_tree.insert("", tk.END, values=row)
@@ -102,30 +103,52 @@ class WorkerApp:
     def close_subpanel(self):
         self.root.destroy()
 
-    ################################################NOTIFICAITON FUNCTIONS#################################
+    ################################################NOTIFICATION FUNCTIONS#################################
 
-    def add_notification(self, description):
-        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION) VALUES (?)', (description,))
+    def create_notifications_table(self):
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS TaskNotifications (
+                notification_id INTEGER PRIMARY KEY,
+                task_id INTEGER,
+                deadline DATETIME,
+                sent_1h INTEGER DEFAULT 0,
+                sent_30m INTEGER DEFAULT 0,
+                sent_10m INTEGER DEFAULT 0,
+                FOREIGN KEY (task_id) REFERENCES tasks (task_id),
+                FOREIGN KEY (deadline) REFERENCES tasks (deadline)
+            )
+        ''')
         self.connector.commit()
 
+    def add_notification(self, description):
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
+                            (description, timestamp))
+        self.connector.commit()
+        self.load_notifications()
+
     def show_notifications_window(self):
-        notification_window = ctk.CTkToplevel(self.root)
-        notification_window.title('Notifications')
-        notification_window.geometry('500x400')
-        notification_window.resizable(0, 0)
+        self.notification_window = ctk.CTkToplevel(self.root)
+        self.notification_window.title('Notifications')
+        self.notification_window.geometry('600x400')
+        self.notification_window.resizable(0, 0)
+        self.notification_window.attributes('-topmost', True)
 
-        notification_window.attributes('-topmost', 'true')
+        # Set the background color to red
+        self.notification_window.configure(fg_color='#BF2C37')
 
-        notification_label = ctk.CTkLabel(notification_window, text="Notifications", font=("Helvetica", 14))
+        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
+                                          font=("Helvetica", 14, 'bold'))
         notification_label.pack(pady=20)
 
-        self.NOTIFICATION_LIST = tk.Listbox(notification_window)
+        self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
         self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
         self.load_notifications()
 
-        delete_button = ctk.CTkButton(notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification)
+        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
+                                      command=self.delete_selected_notification,
+                                      fg_color="black")
         delete_button.pack(pady=10)
 
     def delete_selected_notification(self):
@@ -153,22 +176,22 @@ class WorkerApp:
 
     def load_notifications(self):
         try:
-            self.NOTIFICATION_LIST.delete(0, tk.END)
-            self.notification_ids = {}
-            self.cursor.execute("SELECT * FROM Notifications")
-            notifications = self.cursor.fetchall()
+            if hasattr(self, 'NOTIFICATION_LIST'):
+                self.NOTIFICATION_LIST.delete(0, tk.END)
+                self.notification_ids = {}
+                self.cursor.execute("SELECT * FROM Notifications ORDER BY TIMESTAMP DESC")
+                notifications = self.cursor.fetchall()
 
-            for idx, notification in enumerate(notifications):
-                timestamp = datetime.strptime(notification[2],
-                                              '%Y-%m-%d %H:%M:%S')
-                utc_timezone = pytz.utc
-                local_timezone = pytz.timezone('Asia/Singapore')
-                utc_timestamp = utc_timezone.localize(timestamp)
-                local_timestamp = utc_timestamp.astimezone(local_timezone)
-                formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
-                self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
-                self.notification_ids[idx] = notification[0]
+                for idx, notification in enumerate(notifications):
+                    timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
+                    utc_timezone = pytz.utc
+                    local_timezone = pytz.timezone('Asia/Singapore')
+                    utc_timestamp = utc_timezone.localize(timestamp)
+                    local_timestamp = utc_timestamp.astimezone(local_timezone)
+                    formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                    message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
+                    self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
+                    self.notification_ids[idx] = notification[0]
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
@@ -230,9 +253,61 @@ class WorkerApp:
         except sqlite3.Error as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
+    ################################################ UPCOMING TASK CHECK #################################
+
+    def check_upcoming_tasks(self):
+        now = datetime.now(timezone.utc)
+        warning_times = {
+            '1h': now + timedelta(hours=1),
+            '30m': now + timedelta(minutes=30),
+            '10m': now + timedelta(minutes=10),
+        }
+
+        self.cursor.execute(
+            "SELECT task_id, task_name, deadline FROM tasks WHERE assigned_to=? AND status != 'Completed'",
+            (self.username,))
+        tasks = self.cursor.fetchall()
+
+        for task in tasks:
+            task_id, task_name, deadline = task
+            deadline_dt = datetime.strptime(deadline, '%Y-%m-%d %H:%M:%S').astimezone(timezone.utc)
+
+            for key, warning_time in warning_times.items():
+                if now < deadline_dt <= warning_time:
+                    self.cursor.execute(
+                        "SELECT sent_1h, sent_30m, sent_10m FROM TaskNotifications WHERE task_id=? AND deadline=?",
+                        (task_id, deadline))
+                    notification_status = self.cursor.fetchone()
+
+                    if notification_status:
+                        sent_1h, sent_30m, sent_10m = notification_status
+                    else:
+                        sent_1h = sent_30m = sent_10m = 0
+
+                    if key == '1h' and not sent_1h:
+                        self.add_notification(f'Task "{task_name}" (ID: {task_id}) is due in 1 hour.')
+                        self.cursor.execute(
+                            "INSERT OR REPLACE INTO TaskNotifications (task_id, deadline, sent_1h) VALUES (?, ?, ?)",
+                            (task_id, deadline, 1))
+                    elif key == '30m' and not sent_30m:
+                        self.add_notification(f'Task "{task_name}" (ID: {task_id}) is due in 30 minutes.')
+                        self.cursor.execute(
+                            "INSERT OR REPLACE INTO TaskNotifications (task_id, deadline, sent_30m) VALUES (?, ?, ?)",
+                            (task_id, deadline, 1))
+                    elif key == '10m' and not sent_10m:
+                        self.add_notification(f'Task "{task_name}" (ID: {task_id}) is due in 10 minutes.')
+                        self.cursor.execute(
+                            "INSERT OR REPLACE INTO TaskNotifications (task_id, deadline, sent_10m) VALUES (?, ?, ?)",
+                            (task_id, deadline, 1))
+
+        self.connector.commit()
+
+        # Schedule this function to run again after 5 minutes
+        self.root.after(60000, self.check_upcoming_tasks)
+
 
 if __name__ == "__main__":
     username = sys.argv[1] if len(sys.argv) > 1 else "Unknown"
     root = ctk.CTk()
-    app = WorkerApp(root, "admin")
+    app = WorkerApp(root, username)
     root.mainloop()
