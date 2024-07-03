@@ -9,6 +9,9 @@ import pytz
 import sys
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+import os
+from playsound import playsound
+from plyer import notification
 
 
 class SupervisorApp:
@@ -234,11 +237,33 @@ class SupervisorApp:
         self.stat_frames = []  # Clear the list of stat frames
 
     def add_notification(self, description):
-        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
                             (description, timestamp))
         self.connector.commit()
         self.load_notifications()
+    #     self.play_notification_sound()
+    #
+    # def play_notification_sound(self):
+    #     sound_file = 'rebound.mp3'
+    #     if not os.path.isfile(sound_file):
+    #         print(f"Sound file '{sound_file}' not found.")
+    #         return
+    #
+    #     try:
+    #         playsound(sound_file)  # Path to your alert sound file
+    #     except Exception as e:
+    #         print(f"Error playing sound: {e}")
+    #         print("Attempting to play sound with an alternative library (pygame).")
+    #         try:
+    #             import pygame
+    #             pygame.mixer.init()
+    #             pygame.mixer.music.load(sound_file)
+    #             pygame.mixer.music.play()
+    #             while pygame.mixer.music.get_busy():
+    #                 pygame.time.Clock().tick(10)
+    #         except Exception as e:
+    #             print(f"Alternative method failed: {e}")
 
     def show_notifications_window(self):
         self.notification_window = ctk.CTkToplevel(self.root)
@@ -310,15 +335,24 @@ class SupervisorApp:
 
     def check_low_stock(self):
         try:
-            # Query to select products with stock quantity less than 5
+            # Query to select products with stock quantity less than 5 in Storage Area
             self.cursor.execute(
-                "SELECT PRODUCT_NAME, STOCKS FROM Inventory WHERE STOCKS < 5"
+                "SELECT PRODUCT_NAME, STOCKS FROM Inventory WHERE STOCKS < 5 AND LOCATION='Storage Area'"
             )
             low_stock_products = self.cursor.fetchall()
 
             # Add a notification for each product with low stock
             for product in low_stock_products:
-                self.add_notification(f'Stock alert: {product[0]} stock is low! (Quantity: {product[1]})')
+                self.add_notification(
+                    f'Stock alert: {product[0]} stock is low in Storage Area! (Quantity: {product[1]})')
+
+            for product in low_stock_products:
+                notification.notify(
+                    title='Stock Alert',
+                    message=f'Stock alert: {product[0]} stock is low in Storage Area! (Quantity: {product[1]})',
+                    app_name='Your App Name',
+                    timeout=10  # duration in seconds for the notification to stay on screen
+                )
 
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error checking low stock: {str(e)}')
