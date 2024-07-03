@@ -26,7 +26,7 @@ class Database:
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS roles (
                 role_id INTEGER PRIMARY KEY,
-                role_name TEXT NOT NULL UNIQUE)
+                roles TEXT NOT NULL UNIQUE)
         ''')
 
         self.cursor.execute('''
@@ -36,7 +36,7 @@ class Database:
                 task_description TEXT,
                 assigned_to TEXT NOT NULL,
                 status TEXT,
-                deadline DATE,
+                deadline DATETIME,
                 FOREIGN KEY (assigned_to) REFERENCES workers (username))
         ''')
 
@@ -126,10 +126,22 @@ class Database:
                     LAST_PRODUCT_ID INTEGER NOT NULL)
                 ''')
 
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS TaskNotifications (
+                notification_id INTEGER PRIMARY KEY,
+                task_id INTEGER,
+                deadline DATETIME,
+                sent_1h INTEGER DEFAULT 0,
+                sent_30m INTEGER DEFAULT 0,
+                sent_10m INTEGER DEFAULT 0,
+                FOREIGN KEY (task_id) REFERENCES tasks (task_id),
+                FOREIGN KEY (deadline) REFERENCES tasks (deadline)
+            )
+        ''')
         self.conn.commit()
 
     def fetch_user_role(self, username, hashed_password):
-        self.cursor.execute("SELECT role FROM users WHERE username=? AND password=?", (username, hashed_password))
+        self.cursor.execute("SELECT roles FROM users WHERE username=? AND password=?", (username, hashed_password))
         return self.cursor.fetchone()
 
     def close(self):
