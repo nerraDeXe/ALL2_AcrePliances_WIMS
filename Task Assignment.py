@@ -6,17 +6,17 @@ from datetime import datetime
 import sqlite3
 import pytz
 from tkcalendar import DateEntry
-import subprocess
+from fpdf import FPDF  # Add this import for generating PDF reports
 
 
-class WorkerApp:
+class AssignmentApp:
     def __init__(self, root, username):
         self.connector = sqlite3.connect("AcrePliances.db")
         self.cursor = self.connector.cursor()
 
         self.username = username
         self.root = root
-        self.root.title("Worker Application")
+        self.root.title("TASK ASSIGNMENT")
         self.root.geometry('1280x850')
         self.root.configure(bg='#BF2C37')
         self.root.resizable(0, 0)
@@ -32,9 +32,9 @@ class WorkerApp:
                                    text_color='white')
         title_label.pack(side=tk.LEFT, padx=20, pady=20)
 
-        # welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12),
-        #                              text_color='white')
-        # welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
+        welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12),
+                                     text_color='white')
+        welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
 
         # Add notification button
         self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
@@ -51,13 +51,17 @@ class WorkerApp:
                                          command=self.open_assign_task_window)
         self.task_button.pack(pady=10)
 
-        # self.update_button = ctk.CTkButton(left_frame, text="UPDATE TASK STATUS", fg_color='#FFFFFF',
-        #                                    text_color='#000000', command=self.open_update_task_window)
-        # self.update_button.pack(pady=10)
-
         self.refresh_button = ctk.CTkButton(left_frame, text="REFRESH TASKS", fg_color='#FFFFFF', text_color='#000000',
                                             command=self.load_tasks)
         self.refresh_button.pack(pady=10)
+
+        self.rate_performance_button = ctk.CTkButton(left_frame, text="RATE PERFORMANCE", fg_color='#FFFFFF', text_color='#000000',
+                                         command=self.open_rate_performance_window)
+        self.rate_performance_button.pack(pady=10)
+
+        self.generate_report_button = ctk.CTkButton(left_frame, text="GENERATE REPORT", fg_color='#FFFFFF', text_color='#000000',
+                                            command=self.generate_performance_report)
+        self.generate_report_button.pack(pady=10)
 
         self.back_button = ctk.CTkButton(left_frame, text="BACK", command=self.close_subpanel)
         self.back_button.pack(side=tk.BOTTOM, pady=20)
@@ -125,10 +129,9 @@ class WorkerApp:
         # Task Name Options
         task_names = [
             "Product Allocation",
-            "Delivery Product to Receiving Area",
-            "Staging Area",
-            "Storage Area",
-            "Shipping Area",
+            "Delivery Product to Staging Area",
+            "Delivery Product to Storage Area",
+            "Delivery Product to Shipping Area",
             "Quality Check",
             "Inventory Update",
             "Order Processing",
@@ -201,8 +204,6 @@ class WorkerApp:
 
     def close_subpanel(self):
         self.root.destroy()  # Close the main window and all associated frames
-
-    ################################################NOTIFICAITON FUNCTIONS#################################
 
     def add_notification(self, description):
         self.cursor.execute('INSERT INTO Notifications (DESCRIPTION) VALUES (?)', (description,))
@@ -281,8 +282,122 @@ class WorkerApp:
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
+    def open_rate_performance_window(self):
+        self.rate_performance_window = ctk.CTkToplevel(self.root)
+        self.rate_performance_window.title("Rate Performance")
+        self.rate_performance_window.geometry('400x300')
+        self.rate_performance_window.attributes('-topmost', True)
+
+        title_label = ctk.CTkLabel(self.rate_performance_window, text="Rate Performance", font=("Helvetica", 14))
+        title_label.pack(pady=20)
+
+        # Assign To (User ID)
+        assign_to_frame = ctk.CTkFrame(self.rate_performance_window)
+        assign_to_frame.pack(pady=5, padx=10, fill=tk.X)
+        assign_to_label = ctk.CTkLabel(assign_to_frame, text="Assign To (User ID):")
+        assign_to_label.pack(side=tk.LEFT)
+
+        self.cursor.execute("SELECT username FROM workers")
+        usernames = [row[0] for row in self.cursor.fetchall()]
+        self.assign_to_combobox = ttk.Combobox(assign_to_frame, values=usernames)
+        self.assign_to_combobox.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+
+        # Performance Rating
+        rating_frame = ctk.CTkFrame(self.rate_performance_window)
+        rating_frame.pack(pady=5, padx=10, fill=tk.X)
+        rating_label = ctk.CTkLabel(rating_frame, text="Performance Rating (0-10):")
+        rating_label.pack(side=tk.LEFT)
+        self.rating_entry = ctk.CTkEntry(rating_frame)
+        self.rating_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+
+        rate_button = ctk.CTkButton(self.rate_performance_window, text="Rate", command=self.rate_performance)
+        rate_button.pack(pady=10)
+
+    def rate_performance(self):
+        assigned_to = self.assign_to_combobox.get()
+        rating = self.rating_entry.get()
+
+        # Check if the worker has completed their task
+        self.cursor.execute('''
+            SELECT status
+            FROM tasks
+            WHERE assigned_to = ? AND status = 'Completed'
+        ''', (assigned_to,))
+        completed_tasks = self.cursor.fetchall()
+
+        if not completed_tasks:
+            messagebox.showwarning("Warning", f"{assigned_to} has not completed any tasks.")
+            return
+
+        # Update the performance rating if there is at least one completed task
+        self.cursor.execute('''
+            UPDATE workers
+            SET performance_rating = ?
+            WHERE username = ?
+        ''', (rating, assigned_to))
+        self.connector.commit()
+
+        messagebox.showinfo("Success", "Performance rated successfully!")
+        self.rate_performance_window.destroy()
+
+    def generate_performance_report(self):
+        import pdfkit
+        from jinja2 import Template
+
+        try:
+            self.cursor.execute('''
+                SELECT w.username, w.performance_rating, t.task_name, t.status
+                FROM workers w
+                LEFT JOIN tasks t ON w.username = t.assigned_to
+            ''')
+            rows = self.cursor.fetchall()
+
+            template = Template('''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Worker's Performance Report</title>
+            </head>
+            <body>
+                <h1>AcrePillances - Worker's Performance Report</h1>
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Performance Rating</th>
+                            <th>Task Name</th>
+                            <th>Task Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr>
+                            <td>{{ row[0] }}</td>
+                            <td>{{ row[1] }}</td>
+                            <td>{{ row[2] }}</td>
+                            <td>{{ row[3] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+            ''')
+
+            rendered_html = template.render(rows=rows)
+
+            # Specify the path to your wkhtmltopdf executable if needed pdfkit.from_string(rendered_html,
+            # 'performance_report.pdf', configuration=pdfkit.configuration(wkhtmltopdf='/path/to/wkhtmltopdf'))
+
+            pdfkit.from_string(rendered_html, 'performance_report.pdf')
+
+            messagebox.showinfo("Success", "Performance report generated successfully!")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Error generating performance report: {str(e)}")
+
 
 if __name__ == "__main__":
     root = ctk.CTk()
-    app = WorkerApp(root, "admin")
+    app = AssignmentApp(root, "admin")
     root.mainloop()
