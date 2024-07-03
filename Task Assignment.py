@@ -2,11 +2,12 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import customtkinter as ctk
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import sqlite3
 import pytz
 from tkcalendar import DateEntry
 from fpdf import FPDF
+
 
 class AssignmentApp:
     def __init__(self, root, username):
@@ -22,6 +23,7 @@ class AssignmentApp:
 
         self.create_main_window()
         self.load_tasks()
+        self.schedule_task_status_update()
 
     def create_main_window(self):
         top_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
@@ -54,12 +56,14 @@ class AssignmentApp:
                                             command=self.load_tasks)
         self.refresh_button.pack(pady=10)
 
-        self.rate_performance_button = ctk.CTkButton(left_frame, text="RATE PERFORMANCE", fg_color='#FFFFFF', text_color='#000000',
-                                         command=self.open_rate_performance_window)
+        self.rate_performance_button = ctk.CTkButton(left_frame, text="RATE PERFORMANCE", fg_color='#FFFFFF',
+                                                     text_color='#000000',
+                                                     command=self.open_rate_performance_window)
         self.rate_performance_button.pack(pady=10)
 
-        self.generate_report_button = ctk.CTkButton(left_frame, text="GENERATE REPORT", fg_color='#FFFFFF', text_color='#000000',
-                                            command=self.generate_performance_report)
+        self.generate_report_button = ctk.CTkButton(left_frame, text="GENERATE REPORT", fg_color='#FFFFFF',
+                                                    text_color='#000000',
+                                                    command=self.generate_performance_report)
         self.generate_report_button.pack(pady=10)
 
         self.back_button = ctk.CTkButton(left_frame, text="BACK", command=self.close_subpanel)
@@ -149,84 +153,143 @@ class AssignmentApp:
         self.task_description_entry = ctk.CTkEntry(task_description_frame)
         self.task_description_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        # Assign To (User ID)
+        # Assign To Frame
         assign_to_frame = ctk.CTkFrame(self.assign_task_window)
         assign_to_frame.pack(pady=5, padx=10, fill=tk.X)
         assign_to_label = ctk.CTkLabel(assign_to_frame, text="Assign To (User ID):")
         assign_to_label.pack(side=tk.LEFT)
-
-        # Create dropdown list for usernames
         self.cursor.execute("SELECT username FROM workers")
         usernames = [row[0] for row in self.cursor.fetchall()]
         self.assign_to_combobox = ttk.Combobox(assign_to_frame, values=usernames)
         self.assign_to_combobox.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
-        # Deadline
+        # Deadline Frame
         deadline_frame = ctk.CTkFrame(self.assign_task_window)
         deadline_frame.pack(pady=5, padx=10, fill=tk.X)
-        deadline_label = ctk.CTkLabel(deadline_frame, text="Deadline:")
+        deadline_label = ctk.CTkLabel(deadline_frame, text="Deadline Date and Time Date HH:MM AM/PM:")
         deadline_label.pack(side=tk.LEFT)
-        self.deadline_entry = DateEntry(deadline_frame, width=12, background='darkblue',
-                                        foreground='white', borderwidth=2)
-        self.deadline_entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        self.deadline_date_entry = DateEntry(deadline_frame, date_pattern='y-mm-dd')
+        self.deadline_date_entry.pack(side=tk.LEFT, padx=5)
+        self.hour_spinbox = tk.Spinbox(deadline_frame, from_=1, to=12, width=2)
+        self.hour_spinbox.pack(side=tk.LEFT, padx=5)
+        self.minute_spinbox = tk.Spinbox(deadline_frame, from_=0, to=59, width=2)
+        self.minute_spinbox.pack(side=tk.LEFT, padx=5)
+        self.am_pm_combobox = ttk.Combobox(deadline_frame, values=["AM", "PM"])
+        self.am_pm_combobox.pack(side=tk.LEFT, padx=5)
 
         assign_button = ctk.CTkButton(self.assign_task_window, text="Assign Task", command=self.assign_task)
         assign_button.pack(pady=10)
-
         clear_button = ctk.CTkButton(self.assign_task_window, text="Clear", command=self.clear_assign_task_entries)
         clear_button.pack(pady=10)
 
+    def create_labeled_frame(self, parent, label_text, widget_name, combobox_values=None):
+        frame = ctk.CTkFrame(parent)
+        frame.pack(pady=5, padx=10, fill=tk.X)
+        label = ctk.CTkLabel(frame, text=label_text)
+        label.pack(side=tk.LEFT)
+        if combobox_values:
+            setattr(self, widget_name, ctk.CTkComboBox(frame, values=combobox_values))
+        else:
+            setattr(self, widget_name, ctk.CTkEntry(frame))
+        widget = getattr(self, widget_name)
+        widget.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+
+    def convert_to_24_hour_format(self, hour, minute, am_pm):
+        if am_pm == 'PM' and hour != 12:
+            hour += 12
+        elif am_pm == 'AM' and hour == 12:
+            hour = 0
+        return hour, minute
+
+    def convert_to_local_time(self, date, hour, minute):
+        local_tz = pytz.timezone('Asia/Singapore')
+        deadline_naive = datetime(date.year, date.month, date.day, hour, minute)
+        deadline_local = local_tz.localize(deadline_naive)
+        return deadline_local
+
     def assign_task(self):
-        task_name = self.task_name_combobox.get()
-        task_description = self.task_description_entry.get()
-        assigned_to = self.assign_to_combobox.get()
-        deadline = self.deadline_entry.get_date()
+        try:
+            task_name = self.task_name_combobox.get()
+            task_description = self.task_description_entry.get()
+            assigned_to = self.assign_to_combobox.get()
+            hour = self.hour_spinbox.get()
+            minute = self.minute_spinbox.get()
+            am_pm = self.am_pm_combobox.get()
+            deadline_date = self.deadline_date_entry.get_date()
 
-        self.cursor.execute('''
-            INSERT INTO tasks (task_name, task_description, assigned_to, status, deadline)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (task_name, task_description, assigned_to, "Pending", deadline))
-        self.connector.commit()
+            if not task_name:
+                raise ValueError("Task name cannot be empty.")
+            if not task_description:
+                raise ValueError("Task description cannot be empty.")
+            if not assigned_to:
+                raise ValueError("Assigned to field cannot be empty.")
+            if not hour or not minute or not am_pm:
+                raise ValueError("Time cannot be empty.")
+            if not deadline_date:
+                raise ValueError("Deadline date cannot be empty.")
 
-        # Add notification for the new task assignment
-        self.add_notification(f'Task "{task_name}" has been assigned to {assigned_to}')
+            hour = int(hour)
+            minute = int(minute)
+            hour, minute = self.convert_to_24_hour_format(hour, minute, am_pm)
+            deadline_local = self.convert_to_local_time(deadline_date, hour, minute)
+            deadline_gmt8_str = deadline_local.strftime('%Y-%m-%d %H:%M:%S')
 
-        messagebox.showinfo("Success", "Task assigned successfully!")
-        self.assign_task_window.destroy()
-        self.load_tasks()
+            self.cursor.execute('''
+                INSERT INTO tasks (task_name, task_description, assigned_to, status, deadline)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (task_name, task_description, assigned_to, 'Pending', deadline_gmt8_str))
+            self.connector.commit()
+
+            self.add_notification(f'Task "{task_name}" has been assigned to {assigned_to} due by {deadline_gmt8_str}')
+            messagebox.showinfo("Success", "Task assigned successfully.")
+
+            self.assign_task_window.destroy()
+            self.load_tasks()
+            self.clear_assign_task_entries()
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
     def clear_assign_task_entries(self):
         self.task_name_combobox.set('')
         self.task_description_entry.delete(0, tk.END)
         self.assign_to_combobox.set('')
-        self.deadline_entry.set_date(datetime.now().date())
+        self.deadline_date_entry.set_date(datetime.now())
+        self.hour_spinbox.delete(0, tk.END)
+        self.minute_spinbox.delete(0, tk.END)
+        self.am_pm_combobox.set('AM')
 
     def close_subpanel(self):
         self.root.destroy()  # Close the main window and all associated frames
 
     def add_notification(self, description):
-        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION) VALUES (?)', (description,))
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
+                            (description, timestamp))
         self.connector.commit()
+        self.load_notifications()
 
     def show_notifications_window(self):
-        notification_window = ctk.CTkToplevel(self.root)
-        notification_window.title('Notifications')
-        notification_window.geometry('500x400')
-        notification_window.resizable(0, 0)
+        self.notification_window = ctk.CTkToplevel(self.root)
+        self.notification_window.title('Notifications')
+        self.notification_window.geometry('600x400')
+        self.notification_window.resizable(0, 0)
+        self.notification_window.attributes('-topmost', True)
 
-        # Set the notification window to be on top of the main root window
-        notification_window.attributes('-topmost', 'true')
+        # Set the background color to red
+        self.notification_window.configure(fg_color='#BF2C37')
 
-        notification_label = ctk.CTkLabel(notification_window, text="Notifications", font=("Helvetica", 14))
+        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
+                                          font=("Helvetica", 14, 'bold'))
         notification_label.pack(pady=20)
 
-        self.NOTIFICATION_LIST = tk.Listbox(notification_window)
+        self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
         self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
         self.load_notifications()
 
-        delete_button = ctk.CTkButton(notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification)
+        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
+                                      command=self.delete_selected_notification,
+                                      fg_color="black")
         delete_button.pack(pady=10)
 
     def delete_selected_notification(self):
@@ -262,22 +325,22 @@ class AssignmentApp:
 
     def load_notifications(self):
         try:
-            self.NOTIFICATION_LIST.delete(0, tk.END)  # Clear the list first
-            self.notification_ids = {}  # Dictionary to store index to ID mapping
-            self.cursor.execute("SELECT * FROM Notifications")
-            notifications = self.cursor.fetchall()
+            if hasattr(self, 'NOTIFICATION_LIST'):
+                self.NOTIFICATION_LIST.delete(0, tk.END)
+                self.notification_ids = {}
+                self.cursor.execute("SELECT * FROM Notifications ORDER BY TIMESTAMP DESC")
+                notifications = self.cursor.fetchall()
 
-            for idx, notification in enumerate(notifications):
-                timestamp = datetime.strptime(notification[2],
-                                              '%Y-%m-%d %H:%M:%S')  # Assuming the timestamp is in the third column
-                utc_timezone = pytz.utc
-                local_timezone = pytz.timezone('Asia/Singapore')  # GMT+8 timezone
-                utc_timestamp = utc_timezone.localize(timestamp)
-                local_timestamp = utc_timestamp.astimezone(local_timezone)
-                formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')  # Format the timestamp as desired
-                message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
-                self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
-                self.notification_ids[idx] = notification[0]  # Store the ID with the index as the key
+                for idx, notification in enumerate(notifications):
+                    timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
+                    utc_timezone = pytz.utc
+                    local_timezone = pytz.timezone('Asia/Singapore')
+                    utc_timestamp = utc_timezone.localize(timestamp)
+                    local_timestamp = utc_timestamp.astimezone(local_timezone)
+                    formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                    message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
+                    self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
+                    self.notification_ids[idx] = notification[0]
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
@@ -339,18 +402,36 @@ class AssignmentApp:
         messagebox.showinfo("Success", "Performance rated successfully!")
         self.rate_performance_window.destroy()
 
+    def update_task_statuses(self):
+        current_time = datetime.now(pytz.timezone('Asia/Singapore'))
+        self.cursor.execute("SELECT task_id, deadline FROM tasks WHERE status != 'Completed'")
+        tasks = self.cursor.fetchall()
+
+        for task in tasks:
+            task_id, deadline_str = task
+            # Parsing the deadline string to a datetime object with timezone information
+            try:
+                deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M:%S')
+                deadline = pytz.timezone('Asia/Singapore').localize(deadline)
+
+                if current_time > deadline:
+                    self.cursor.execute("UPDATE tasks SET status = 'Overdue' WHERE task_id = ?", (task_id,))
+            except ValueError as e:
+                print(f"Error parsing date for task {task_id}: {e}")
+
+        self.connector.commit()
+        self.load_tasks()  # Refresh the task list to show updated statuses
+
     def generate_performance_report(self):
-        # Get the selected task from the task tree
         selected_item = self.task_tree.selection()
         if not selected_item:
             messagebox.showwarning("Warning", "Please select a task to generate the report.")
             return
 
         selected_task = self.task_tree.item(selected_item)["values"]
-        task_id = selected_task[0]  # Assuming the first column is the task ID
+        task_id = selected_task[0]
 
         try:
-            # Fetch detailed data for the selected task from the database
             self.cursor.execute('''
                 SELECT w.username, w.performance_rating, t.task_id, t.task_name, t.deadline, t.task_description, t.status
                 FROM workers w
@@ -362,24 +443,19 @@ class AssignmentApp:
             if row:
                 username, performance_rating, task_id, task_name, deadline, task_description, status = row
 
-                # Validate performance rating
                 if not (0 <= performance_rating < 10):
                     messagebox.showerror("Error", "Performance rating must be between 0 and 10.")
                     return
 
-                # Format the date
                 date_str = datetime.now().strftime("%Y-%m-%d")
 
-                # Create a new PDF document
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font("Arial", size=12)
 
-                # Add title
                 pdf.set_font("Arial", 'B', size=16)
                 pdf.cell(200, 10, txt="Worker's Performance Report", ln=True, align='C')
 
-                # Add worker and task information
                 pdf.set_font("Arial", size=12)
                 pdf.cell(200, 10, txt=f"Username: {username}", ln=True)
                 pdf.cell(200, 10, txt=f"Performance Rating: {performance_rating}", ln=True)
@@ -390,7 +466,6 @@ class AssignmentApp:
                 pdf.cell(200, 10, txt=f"Status: {status}", ln=True)
                 pdf.cell(200, 10, txt=f"Date: {date_str}", ln=True)
 
-                # Save the PDF with the name containing the username and date
                 file_name = f"performance_report_{username}_{date_str}.pdf"
                 pdf.output(file_name)
 
@@ -400,6 +475,11 @@ class AssignmentApp:
 
         except Exception as e:
             messagebox.showerror("Error", f"Error generating performance report: {str(e)}")
+
+    def schedule_task_status_update(self):
+        self.update_task_statuses()
+        # Schedule the function to run every 5 minutes
+        self.root.after(60000, self.schedule_task_status_update)  # 300000 milliseconds = 5 minutes
 
 
 if __name__ == "__main__":
