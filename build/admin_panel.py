@@ -9,6 +9,8 @@ import pytz
 import sys
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from playsound import playsound
+import os
 
 
 class AdminApp:
@@ -26,6 +28,7 @@ class AdminApp:
         self.root.resizable(0, 0)
         self.stat_frames = []
         self.create_widgets()
+        self.check_low_stock()
 
     def open_purchase_order_panel(self):
         root.withdraw()
@@ -72,6 +75,24 @@ class AdminApp:
         self.destroy_inventory_stats()
         self.create_inventory_stats()
 
+    def open_tasks_panel(self):
+        root.withdraw()
+        subprocess.run(["python", "Task Status Update.py", username])
+        root.deiconify()
+        self.destroy_graph()
+        self.create_graph()
+        self.destroy_inventory_stats()
+        self.create_inventory_stats()
+
+    def open_tasks_assignment_panel(self):
+        root.withdraw()
+        subprocess.run(["python", "Task Assignment.py"])
+        root.deiconify()
+        self.destroy_graph()
+        self.create_graph()
+        self.destroy_inventory_stats()
+        self.create_inventory_stats()
+
     def create_widgets(self):
         top_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         top_frame.pack(side=tk.TOP, fill=tk.X)
@@ -96,31 +117,43 @@ class AdminApp:
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=20)
 
         self.button1 = ctk.CTkButton(left_frame, text="USER MANAGEMENT", fg_color='#FFFFFF',
-                                                    text_color='#000000',
-                                                       command=self.open_user_management_panel
-                                                    )
+                                     text_color='#000000',
+                                     command=self.open_user_management_panel
+                                     )
         self.button1.pack(pady=10)
 
-        self.button2= ctk.CTkButton(left_frame, text="INVENTORY MANAGEMENT", fg_color='#FFFFFF',
-                                                       text_color='#000000',
-                                                       command=self.open_inventory_panel)
+        self.button2 = ctk.CTkButton(left_frame, text="INVENTORY MANAGEMENT", fg_color='#FFFFFF',
+                                     text_color='#000000',
+                                     command=self.open_inventory_panel)
         self.button2.pack(pady=10)
 
         self.button3 = ctk.CTkButton(left_frame, text="PURCHASE ORDER", fg_color='#FFFFFF',
-                                                   text_color='#000000',
-                                                       command=self.open_purchase_order_panel )
+                                     text_color='#000000',
+                                     command=self.open_purchase_order_panel)
         self.button3.pack(pady=10)
 
         self.button4 = ctk.CTkButton(left_frame, text="SALES ORDER", fg_color='#FFFFFF',
                                      text_color='#000000',
-                                                       command=self.open_sales_order_panel
+                                     command=self.open_sales_order_panel
                                      )
         self.button4.pack(pady=10)
 
         self.button5 = ctk.CTkButton(left_frame, text="VENDORS", fg_color='#FFFFFF',
                                      text_color='#000000',
-                                                       command=self.open_vendor_details_panel)
+                                     command=self.open_vendor_details_panel)
         self.button5.pack(pady=10)
+
+        self.button6 = ctk.CTkButton(left_frame, text="TASK ASSIGNMENT", fg_color='#FFFFFF',
+                                     text_color='#000000',
+                                     command=self.open_tasks_assignment_panel
+                                     )
+        self.button6.pack(pady=10)
+
+        self.button7 = ctk.CTkButton(left_frame, text="TASKS", fg_color='#FFFFFF',
+                                     text_color='#000000',
+                                     command=self.open_tasks_panel
+                                     )
+        self.button7.pack(pady=10)
 
         self.back_button = ctk.CTkButton(left_frame, text="LOG OUT", command=self.close_subpanel)
         self.back_button.pack(side=tk.BOTTOM, pady=20)
@@ -228,7 +261,6 @@ class AdminApp:
                                              font=font)
             description_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-
     def destroy_inventory_stats(self):
         for stat_frame in self.stat_frames:
             stat_frame.pack_forget()  # Remove the stat frame from the frame
@@ -240,15 +272,41 @@ class AdminApp:
                             (description, timestamp))
         self.connector.commit()
         self.load_notifications()
+        # self.play_notification_sound()
+
+    # def play_notification_sound(self):
+    #     sound_file = 'rebound.mp3'
+    #     if not os.path.isfile(sound_file):
+    #         print(f"Sound file '{sound_file}' not found.")
+    #         return
+    #
+    #     try:
+    #         playsound(sound_file)  # Path to your alert sound file
+    #     except Exception as e:
+    #         print(f"Error playing sound: {e}")
+    #         print("Attempting to play sound with an alternative library (pygame).")
+    #         try:
+    #             import pygame
+    #             pygame.mixer.init()
+    #             pygame.mixer.music.load(sound_file)
+    #             pygame.mixer.music.play()
+    #             while pygame.mixer.music.get_busy():
+    #                 pygame.time.Clock().tick(10)
+    #         except Exception as e:
+    #             print(f"Alternative method failed: {e}")
 
     def show_notifications_window(self):
         self.notification_window = ctk.CTkToplevel(self.root)
         self.notification_window.title('Notifications')
-        self.notification_window.geometry('500x400')
+        self.notification_window.geometry('600x400')
         self.notification_window.resizable(0, 0)
-        self.notification_window.attributes('-topmost', 'true')
+        self.notification_window.attributes('-topmost', True)
 
-        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications", font=("Helvetica", 14))
+        # Set the background color to red
+        self.notification_window.configure(fg_color='#BF2C37')
+
+        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
+                                          font=("Helvetica", 14, 'bold'))
         notification_label.pack(pady=20)
 
         self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
@@ -257,7 +315,8 @@ class AdminApp:
         self.load_notifications()
 
         delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification)
+                                      command=self.delete_selected_notification,
+                                      fg_color="black")
         delete_button.pack(pady=10)
 
     def delete_selected_notification(self):
@@ -285,23 +344,40 @@ class AdminApp:
 
     def load_notifications(self):
         try:
-            self.NOTIFICATION_LIST.delete(0, tk.END)
-            self.notification_ids = {}
-            self.cursor.execute("SELECT * FROM Notifications")
-            notifications = self.cursor.fetchall()
+            if hasattr(self, 'NOTIFICATION_LIST'):
+                self.NOTIFICATION_LIST.delete(0, tk.END)
+                self.notification_ids = {}
+                self.cursor.execute("SELECT * FROM Notifications ORDER BY TIMESTAMP DESC")
+                notifications = self.cursor.fetchall()
 
-            for idx, notification in enumerate(notifications):
-                timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
-                utc_timezone = pytz.utc
-                local_timezone = pytz.timezone('Asia/Singapore')
-                utc_timestamp = utc_timezone.localize(timestamp)
-                local_timestamp = utc_timestamp.astimezone(local_timezone)
-                formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
-                self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
-                self.notification_ids[idx] = notification[0]
+                for idx, notification in enumerate(notifications):
+                    timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
+                    utc_timezone = pytz.utc
+                    local_timezone = pytz.timezone('Asia/Singapore')
+                    utc_timestamp = utc_timezone.localize(timestamp)
+                    local_timestamp = utc_timestamp.astimezone(local_timezone)
+                    formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                    message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
+                    self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
+                    self.notification_ids[idx] = notification[0]
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
+
+    def check_low_stock(self):
+        try:
+            # Query to select products with stock quantity less than 5 in Storage Area
+            self.cursor.execute(
+                "SELECT PRODUCT_NAME, STOCKS FROM Inventory WHERE STOCKS < 5 AND LOCATION='Storage Area'"
+            )
+            low_stock_products = self.cursor.fetchall()
+
+            # Add a notification for each product with low stock
+            for product in low_stock_products:
+                self.add_notification(
+                    f'Stock alert: {product[0]} stock is low in Storage Area! (Quantity: {product[1]})')
+
+        except sqlite3.Error as e:
+            messagebox.showerror('Error', f'Error checking low stock: {str(e)}')
 
 
 if __name__ == "__main__":
