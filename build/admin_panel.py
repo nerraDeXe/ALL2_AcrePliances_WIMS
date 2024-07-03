@@ -11,6 +11,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from playsound import playsound
 import os
+from plyer import notification
 
 
 class AdminApp:
@@ -272,8 +273,8 @@ class AdminApp:
                             (description, timestamp))
         self.connector.commit()
         self.load_notifications()
-        # self.play_notification_sound()
-
+    #     self.play_notification_sound()
+    #
     # def play_notification_sound(self):
     #     sound_file = 'rebound.mp3'
     #     if not os.path.isfile(sound_file):
@@ -375,6 +376,14 @@ class AdminApp:
             for product in low_stock_products:
                 self.add_notification(
                     f'Stock alert: {product[0]} stock is low in Storage Area! (Quantity: {product[1]})')
+
+            for product in low_stock_products:
+                notification.notify(
+                    title='Stock Alert',
+                    message=f'Stock alert: {product[0]} stock is low in Storage Area! (Quantity: {product[1]})',
+                    app_name='Your App Name',
+                    timeout=10  # duration in seconds for the notification to stay on screen
+                )
 
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error checking low stock: {str(e)}')
