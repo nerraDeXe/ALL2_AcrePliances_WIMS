@@ -250,24 +250,12 @@ class InventoryApp:
         ctk.CTkLabel(self.edit_window, text="Purchase Price:").grid(row=3, column=0, padx=10, pady=5)
         self.purchase_price_entry = ctk.CTkEntry(self.edit_window, width=400)
         self.purchase_price_entry.grid(row=3, column=1, padx=10, pady=5)
-        self.purchase_price_entry.insert(0, values[5])
+        self.purchase_price_entry.insert(0, values[6])
 
         ctk.CTkLabel(self.edit_window, text="Selling Price:").grid(row=4, column=0, padx=10, pady=5)
         self.selling_price_entry = ctk.CTkEntry(self.edit_window, width=400)
         self.selling_price_entry.grid(row=4, column=1, padx=10, pady=5)
-        self.selling_price_entry.insert(0, values[6])
-
-        ctk.CTkLabel(self.edit_window, text="Location:").grid(row=5, column=0, padx=10, pady=5)
-        self.location_var = tk.StringVar(self.edit_window)
-        self.location_var.set(values[7])
-        self.location_entry = ctk.CTkOptionMenu(self.edit_window, variable=self.location_var,
-                                            values=['Staging Area', 'Storage Area'])
-        self.location_entry.grid(row=5, column=1, padx=10, pady=5)
-
-        ctk.CTkLabel(self.edit_window, text="Date:").grid(row=6, column=0, padx=10, pady=5)
-        self.date_entry = DateEntry(self.edit_window, date=datetime.now().date(), font=('Gill Sans MT', 13), date_pattern='yyyy-mm-dd')
-        self.date_entry.grid(row=6, column=1, padx=10, pady=5)
-        self.date_entry.insert(0, values[1])
+        self.selling_price_entry.insert(0, values[7])
 
         # Add buttons for Update and Cancel
         ctk.CTkButton(self.edit_window, text='Update Record', font=('Helvetica', 13, 'bold'), fg_color='SpringGreen4',
@@ -423,17 +411,17 @@ class InventoryApp:
     def update_record_direct(self):
         try:
             # Validate required fields
-            if not self.date_entry.get() or not self.product_name_entry.get() or not self.stocks_entry.get() or \
-                    not self.purchase_price_entry.get() or not self.selling_price_entry.get() or not self.location_entry.get():
+            if not self.product_name_entry.get() or not self.stocks_entry.get() or \
+                    not self.purchase_price_entry.get() or not self.selling_price_entry.get():
                 messagebox.showerror('Fields empty or invalid amount!', "Please fill all missing fields.")
                 return
 
             # Update the product record directly
             self.connector.execute(
-                'UPDATE Inventory SET date=?, PRODUCT_NAME=LTRIM(RTRIM(?)), STOCKS=?, PURCHASE_PRICE=?, '
-                'SELLING_PRICE=?, LOCATION=? WHERE PRODUCT_REAL_ID=?', (
-                    self.date_entry.get(), self.product_name_entry.get(), int(self.stocks_entry.get()),
-                    self.purchase_price_entry.get(), self.selling_price_entry.get(), self.location_entry.get(),
+                'UPDATE Inventory SET PRODUCT_NAME=LTRIM(RTRIM(?)), STOCKS=?, PURCHASE_PRICE=?, '
+                'SELLING_PRICE=? WHERE PRODUCT_REAL_ID=?', (
+                    self.product_name_entry.get(), int(self.stocks_entry.get()),
+                    self.purchase_price_entry.get(), self.selling_price_entry.get(),
                     self.inventory_tree.item(self.inventory_tree.focus())['values'][0])
             )
 
