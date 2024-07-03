@@ -3,12 +3,13 @@ import tkinter as tk
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 import sqlite3
-from datetime import datetime, date
+from datetime import datetime, date,timezone
 from PIL import Image, ImageTk
 import pytz
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
+
 
 class PurchaseApp:
     def __init__(self, root, username):
@@ -139,7 +140,6 @@ class PurchaseApp:
 
         for row in rows:
             self.order_tree.insert('', 'end', values=row)
-
 
     def create_purchase_order_window(self):
         self.extra_window = ctk.CTkToplevel(self.root)
@@ -304,7 +304,6 @@ class PurchaseApp:
         self.connector.commit()
         self.extra_window.destroy()
         self.load_order_data()
-        self.add_notification(f"EDITED PRODUCT NAME: {product_name} FROM PURCHASE ORDER")
 
         messagebox.showinfo("Success", "Purchase Order updated successfully!")
 
@@ -325,7 +324,6 @@ class PurchaseApp:
             self.connector.commit()
 
             self.load_order_data()
-            self.add_notification(f"DELETED ORDER ID: {purchase_order_id} FROM PURCHASE ORDER")
 
     def complete_order_window(self):
         selected_item = self.order_tree.selection()
@@ -476,28 +474,34 @@ class PurchaseApp:
 
     ############################################ NOTIFICATION FUNCTIONS#################################################
     def add_notification(self, description):
-        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION) VALUES (?)', (description,))
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
+                            (description, timestamp))
         self.connector.commit()
+        self.load_notifications()
 
     def show_notifications_window(self):
-        notification_window = ctk.CTkToplevel(self.root)
-        notification_window.title('Notifications')
-        notification_window.geometry('500x400')
-        notification_window.resizable(0, 0)
+        self.notification_window = ctk.CTkToplevel(self.root)
+        self.notification_window.title('Notifications')
+        self.notification_window.geometry('600x400')
+        self.notification_window.resizable(0, 0)
+        self.notification_window.attributes('-topmost', True)
 
-        # Set the notification window to be on top of the main root window
-        notification_window.attributes('-topmost', 'true')
+        # Set the background color to red
+        self.notification_window.configure(fg_color='#BF2C37')
 
-        notification_label = ctk.CTkLabel(notification_window, text="Notifications", font=("Helvetica", 14))
+        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
+                                          font=("Helvetica", 14, 'bold'))
         notification_label.pack(pady=20)
 
-        self.NOTIFICATION_LIST = tk.Listbox(notification_window)
+        self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
         self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
         self.load_notifications()
 
-        delete_button = ctk.CTkButton(notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification)
+        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
+                                      command=self.delete_selected_notification,
+                                      fg_color="black")
         delete_button.pack(pady=10)
 
     def delete_selected_notification(self):
@@ -533,22 +537,22 @@ class PurchaseApp:
 
     def load_notifications(self):
         try:
-            self.NOTIFICATION_LIST.delete(0, tk.END)  # Clear the list first
-            self.notification_ids = {}  # Dictionary to store index to ID mapping
-            self.cursor.execute("SELECT * FROM Notifications")
-            notifications = self.cursor.fetchall()
+            if hasattr(self, 'NOTIFICATION_LIST'):
+                self.NOTIFICATION_LIST.delete(0, tk.END)
+                self.notification_ids = {}
+                self.cursor.execute("SELECT * FROM Notifications ORDER BY TIMESTAMP DESC")
+                notifications = self.cursor.fetchall()
 
-            for idx, notification in enumerate(notifications):
-                timestamp = datetime.strptime(notification[2],
-                                              '%Y-%m-%d %H:%M:%S')  # Assuming the timestamp is in the third column
-                utc_timezone = pytz.utc
-                local_timezone = pytz.timezone('Asia/Singapore')  # GMT+8 timezone
-                utc_timestamp = utc_timezone.localize(timestamp)
-                local_timestamp = utc_timestamp.astimezone(local_timezone)
-                formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')  # Format the timestamp as desired
-                message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
-                self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
-                self.notification_ids[idx] = notification[0]  # Store the ID with the index as the key
+                for idx, notification in enumerate(notifications):
+                    timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
+                    utc_timezone = pytz.utc
+                    local_timezone = pytz.timezone('Asia/Singapore')
+                    utc_timestamp = utc_timezone.localize(timestamp)
+                    local_timestamp = utc_timestamp.astimezone(local_timezone)
+                    formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                    message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
+                    self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
+                    self.notification_ids[idx] = notification[0]
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
