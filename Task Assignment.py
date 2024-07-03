@@ -6,8 +6,7 @@ from datetime import datetime
 import sqlite3
 import pytz
 from tkcalendar import DateEntry
-from fpdf import FPDF  # Add this import for generating PDF reports
-
+from fpdf import FPDF
 
 class AssignmentApp:
     def __init__(self, root, username):
@@ -341,57 +340,58 @@ class AssignmentApp:
         self.rate_performance_window.destroy()
 
     def generate_performance_report(self):
-        import pdfkit
-        from jinja2 import Template
+        # Get the selected task from the task tree
+        selected_item = self.task_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a task to generate the report.")
+            return
+
+        selected_task = self.task_tree.item(selected_item)["values"]
+        task_id = selected_task[0]  # Assuming the first column is the task ID
 
         try:
+            # Fetch detailed data for the selected task from the database
             self.cursor.execute('''
-                SELECT w.username, w.performance_rating, t.task_name, t.status
+                SELECT w.username, w.performance_rating, t.task_id, t.task_name, t.deadline, t.task_description, t.status
                 FROM workers w
                 LEFT JOIN tasks t ON w.username = t.assigned_to
-            ''')
-            rows = self.cursor.fetchall()
+                WHERE t.task_id = ?
+            ''', (task_id,))
+            row = self.cursor.fetchone()
 
-            template = Template('''
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Worker's Performance Report</title>
-            </head>
-            <body>
-                <h1>AcrePillances - Worker's Performance Report</h1>
-                <table border="1">
-                    <thead>
-                        <tr>
-                            <th>Username</th>
-                            <th>Performance Rating</th>
-                            <th>Task Name</th>
-                            <th>Task Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in rows %}
-                        <tr>
-                            <td>{{ row[0] }}</td>
-                            <td>{{ row[1] }}</td>
-                            <td>{{ row[2] }}</td>
-                            <td>{{ row[3] }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </body>
-            </html>
-            ''')
+            if row:
+                username, performance_rating, task_id, task_name, deadline, task_description, status = row
 
-            rendered_html = template.render(rows=rows)
+                # Format the date
+                date_str = datetime.now().strftime("%Y-%m-%d")
 
-            # Specify the path to your wkhtmltopdf executable if needed pdfkit.from_string(rendered_html,
-            # 'performance_report.pdf', configuration=pdfkit.configuration(wkhtmltopdf='/path/to/wkhtmltopdf'))
+                # Create a new PDF document
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", size=12)
 
-            pdfkit.from_string(rendered_html, 'performance_report.pdf')
+                # Add title
+                pdf.set_font("Arial", 'B', size=16)
+                pdf.cell(200, 10, txt="Worker's Performance Report", ln=True, align='C')
 
-            messagebox.showinfo("Success", "Performance report generated successfully!")
+                # Add worker and task information
+                pdf.set_font("Arial", size=12)
+                pdf.cell(200, 10, txt=f"Username: {username}", ln=True)
+                pdf.cell(200, 10, txt=f"Performance Rating: {performance_rating}", ln=True)
+                pdf.cell(200, 10, txt=f"Task ID: {task_id}", ln=True)
+                pdf.cell(200, 10, txt=f"Task Name: {task_name}", ln=True)
+                pdf.cell(200, 10, txt=f"Deadline: {deadline}", ln=True)
+                pdf.cell(200, 10, txt=f"Task Description: {task_description}", ln=True)
+                pdf.cell(200, 10, txt=f"Status: {status}", ln=True)
+                pdf.cell(200, 10, txt=f"Date: {date_str}", ln=True)
+
+                # Save the PDF with the name containing the username and date
+                file_name = f"performance_report_{username}_{date_str}.pdf"
+                pdf.output(file_name)
+
+                messagebox.showinfo("Success", "Performance report generated successfully!")
+            else:
+                messagebox.showerror("Error", "No details found for the selected task.")
 
         except Exception as e:
             messagebox.showerror("Error", f"Error generating performance report: {str(e)}")
