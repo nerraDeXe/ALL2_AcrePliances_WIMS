@@ -6,6 +6,10 @@ import sqlite3
 from datetime import datetime
 from PIL import Image, ImageTk
 import pytz
+import reportlab
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from tkinter import filedialog
 
 
 class SalesApp:
@@ -32,21 +36,24 @@ class SalesApp:
         title_label = ctk.CTkLabel(top_frame, text="SALES ORDER MANAGEMENT", font=("Helvetica", 16), text_color='white')
         title_label.pack(side=tk.LEFT, padx=20, pady=20)
 
-
         self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
-        self.notification_button = tk.Button(top_frame, image=self.notification_image, bg='white', activebackground='darkred', command=self.show_notifications_window)
+        self.notification_button = tk.Button(top_frame, image=self.notification_image, bg='white',
+                                             activebackground='darkred', command=self.show_notifications_window)
         self.notification_button.pack(side=tk.RIGHT, padx=20, pady=20)
 
         left_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=20)
 
-        self.add_sales_order_button = ctk.CTkButton(left_frame, text="ADD SALES ORDER", fg_color='#FFFFFF', text_color='#000000', command=self.create_sales_order_window)
+        self.add_sales_order_button = ctk.CTkButton(left_frame, text="ADD SALES ORDER", fg_color='#FFFFFF',
+                                                    text_color='#000000', command=self.create_sales_order_window)
         self.add_sales_order_button.pack(pady=10)
 
-        self.delete_sales_order_button = ctk.CTkButton(left_frame, text="DELETE SALES ORDER", fg_color='#FFFFFF', text_color='#000000', command=self.delete_order)
+        self.delete_sales_order_button = ctk.CTkButton(left_frame, text="DELETE SALES ORDER", fg_color='#FFFFFF',
+                                                       text_color='#000000', command=self.delete_order)
         self.delete_sales_order_button.pack(pady=10)
 
-        self.complete_order_button = ctk.CTkButton(left_frame, text="COMPLETE ORDER", fg_color='#FFFFFF', text_color='#000000', command=self.complete_sales_order)
+        self.complete_order_button = ctk.CTkButton(left_frame, text="COMPLETE ORDER", fg_color='#FFFFFF',
+                                                   text_color='#000000', command=self.complete_sales_order)
         self.complete_order_button.pack(pady=10)
 
         self.back_button = ctk.CTkButton(left_frame, text="Back", command=self.close_subpanel)
@@ -61,10 +68,12 @@ class SalesApp:
         self.inventory_frame = ctk.CTkFrame(main_frame, fg_color='white')
         self.inventory_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        order_details_label = ctk.CTkLabel(self.order_frame, text="Sales Order Details:", font=("Helvetica", 20, 'bold'), text_color='black')
+        order_details_label = ctk.CTkLabel(self.order_frame, text="Sales Order Details:",
+                                           font=("Helvetica", 20, 'bold'), text_color='black')
         order_details_label.pack(anchor=tk.W, pady=10)
 
-        self.sales_order_tree = ttk.Treeview(self.order_frame, columns=("ID", "Product Name", "Product ID", "Category", "Quantity", "Date", "Store Branch"), show='headings')
+        self.sales_order_tree = ttk.Treeview(self.order_frame, columns=(
+            "ID", "Product Name", "Product ID", "Category", "Quantity", "Date", "Store Branch"), show='headings')
         self.sales_order_tree.heading("ID", text="ID")
         self.sales_order_tree.heading("Product Name", text="Product Name")
         self.sales_order_tree.heading("Product ID", text="Product ID")
@@ -72,7 +81,6 @@ class SalesApp:
         self.sales_order_tree.heading("Quantity", text="Quantity")
         self.sales_order_tree.heading("Date", text="Date")
         self.sales_order_tree.heading("Store Branch", text="Store Branch")
-
 
         self.sales_order_tree.column("ID", width=50, stretch=tk.NO)
         self.sales_order_tree.column("Product Name", width=280, stretch=tk.NO)
@@ -84,10 +92,13 @@ class SalesApp:
 
         self.sales_order_tree.pack(fill=tk.BOTH, expand=False, padx=10, pady=10)
 
-        inventory_details_label = ctk.CTkLabel(self.inventory_frame, text="Inventory:", font=("Helvetica", 20, 'bold'), text_color='black')
+        inventory_details_label = ctk.CTkLabel(self.inventory_frame, text="Inventory:", font=("Helvetica", 20, 'bold'),
+                                               text_color='black')
         inventory_details_label.pack(anchor=tk.W, pady=10)
 
-        self.inventory_tree = ttk.Treeview(self.inventory_frame, columns=("PRODUCT_REAL_ID", "DATE", "PRODUCT_NAME", "PRODUCT_ID", "STOCKS", "CATEGORY", "PURCHASE_PRICE", "SELLING_PRICE", "LOCATION", "INTERNAL_REFERENCE"), show='headings')
+        self.inventory_tree = ttk.Treeview(self.inventory_frame, columns=(
+            "PRODUCT_REAL_ID", "DATE", "PRODUCT_NAME", "PRODUCT_ID", "STOCKS", "CATEGORY", "PURCHASE_PRICE",
+            "SELLING_PRICE", "LOCATION", "INTERNAL_REFERENCE"), show='headings')
         self.inventory_tree.heading("PRODUCT_REAL_ID", text="Product Real ID")
         self.inventory_tree.heading("DATE", text="Date")
         self.inventory_tree.heading("PRODUCT_NAME", text="Product Name")
@@ -104,6 +115,12 @@ class SalesApp:
 
         # Adjust column widths
         self.adjust_column_widths()
+
+        # Add a button to generate the shipped stock report
+        self.generate_report_button = ctk.CTkButton(left_frame, text="Generate Shipped Stock Report",
+                                                    fg_color='#FFFFFF', text_color='#000000',
+                                                    command=self.generate_shipped_stock_report)
+        self.generate_report_button.pack(pady=10)
 
     def adjust_column_widths(self):
         # Calculate available width for remaining columns
@@ -175,7 +192,8 @@ class SalesApp:
             "AcrePliances Negeri Sembilan"
         ]
         self.location_branch_var = tk.StringVar()
-        self.location_branch_combobox = ttk.Combobox(location_branch_frame, textvariable=self.location_branch_var, values=branches)
+        self.location_branch_combobox = ttk.Combobox(location_branch_frame, textvariable=self.location_branch_var,
+                                                     values=branches)
         self.location_branch_combobox.pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         add_button = ctk.CTkButton(self.extra_window, text="Add Order", command=self.add_sales_order)
@@ -193,12 +211,28 @@ class SalesApp:
             self.cursor.execute(
                 'INSERT INTO Sales_Orders (PRODUCT_NAME, PRODUCT_ID, CATEGORY, QUANTITY, DATE, STORE_BRANCH) VALUES ('
                 '?, ?, ?, ?, ?, ?)',
-                (self.selected_product_name, self.selected_product_id, self.selected_category, quantity, self.selected_date, location_branch)
+                (self.selected_product_name, self.selected_product_id, self.selected_category, quantity,
+                 self.selected_date, location_branch)
             )
             self.cursor.execute(
                 'UPDATE Inventory SET STOCKS = STOCKS - ? WHERE PRODUCT_ID = ?',
                 (quantity, self.selected_product_id)
             )
+
+            # Check the stock level after the update
+            self.cursor.execute(
+                'SELECT STOCKS FROM Inventory WHERE PRODUCT_ID = ?',
+                (self.selected_product_id,)
+            )
+            updated_stock = self.cursor.fetchone()[0]
+
+            # Remove inventory data if stock is less than or equal to 0
+            if updated_stock <= 0:
+                self.cursor.execute(
+                    'DELETE FROM Inventory WHERE PRODUCT_ID = ?',
+                    (self.selected_product_id,)
+                )
+
             self.connector.commit()
             self.load_sales_order_data()
             self.load_inventory_data()
@@ -238,21 +272,31 @@ class SalesApp:
             messagebox.showwarning('Error', 'Please select a sales order to complete.')
             return
 
-        order_id = self.sales_order_tree.item(selected_item)['values'][0]
+        order = self.sales_order_tree.item(selected_item)['values']
+        order_id = order[0]
 
         confirm = messagebox.askyesno('Confirm Complete', 'Are you sure you want to complete the selected sales order?')
         if not confirm:
             return
 
+        shipped_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.cursor.execute(
+            'INSERT INTO Shipped_Stock (PRODUCT_NAME, PRODUCT_ID, CATEGORY, QUANTITY, DATE, STORE_BRANCH, '
+            'SHIPPED_TIME) VALUES ('
+            '?, ?, ?, ?, ?, ?, ?)',
+            (order[1], order[2], order[3], order[4], order[5], order[6], shipped_time)
+        )
         self.cursor.execute('DELETE FROM Sales_Orders WHERE ORDER_ID=?', (order_id,))
         self.connector.commit()
         self.load_sales_order_data()
         self.load_inventory_data()
-        messagebox.showinfo('Success', 'Sales order completed successfully!')
+        self.add_notification(f"Order {order_id} completed and shipped.")
+        messagebox.showinfo('Success', 'Sales order completed and shipped successfully!')
 
     def add_notification(self, description):
         timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)', (description, timestamp))
+        self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
+                            (description, timestamp))
         self.connector.commit()
         self.load_notifications()
 
@@ -270,7 +314,8 @@ class SalesApp:
 
         self.load_notifications()
 
-        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected", command=self.delete_selected_notification)
+        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
+                                      command=self.delete_selected_notification)
         delete_button.pack(pady=10)
 
     def delete_selected_notification(self):
@@ -280,7 +325,8 @@ class SalesApp:
             messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
             return
 
-        confirm_delete = messagebox.askyesno('Confirm Delete', 'Are you sure you want to delete the selected notification(s)?')
+        confirm_delete = messagebox.askyesno('Confirm Delete',
+                                             'Are you sure you want to delete the selected notification(s)?')
         if not confirm_delete:
             return
 
@@ -314,6 +360,66 @@ class SalesApp:
                 self.notification_ids[idx] = notification[0]
         except sqlite3.Error as e:
             messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
+
+    def generate_shipped_stock_report(self):
+        # Create a new window to prompt the user for file save location
+        report_window = ctk.CTkToplevel(self.root)
+        report_window.title('Shipped Stock Report')
+        report_window.geometry('1000x800')
+        report_window.attributes('-topmost', 'true')
+
+        save_label = ctk.CTkLabel(report_window, text="Save Shipped Stock Report as PDF",
+                                  font=("Helvetica", 14, 'bold'))
+        save_label.pack(pady=20)
+
+        def save_pdf():
+            file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+            if file_path:
+                self.create_pdf_report(file_path)
+                messagebox.showinfo('Success', f'Report saved successfully at {file_path}')
+                report_window.destroy()
+
+        save_button = ctk.CTkButton(report_window, text="Save as PDF", command=save_pdf)
+        save_button.pack(pady=10)
+
+    def create_pdf_report(self, file_path):
+        c = canvas.Canvas(file_path, pagesize=letter)
+        width, height = letter
+        c.setFont("Helvetica", 10)
+
+        # Title
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(200, height - 50, "Shipped Stock Report")
+
+        # Column Headers
+        c.setFont("Helvetica-Bold", 10)
+        headers = ["Shipped ID", "Product Name", "Product ID", "Category", "Quantity", "Date", "Store Branch",
+                   "Shipped Time"]
+        x_offset = 40
+        y_offset = height - 80
+        col_width = 70
+        for header in headers:
+            c.drawString(x_offset, y_offset, header)
+            x_offset += col_width
+
+        # Data Rows
+        self.cursor.execute('SELECT * FROM Shipped_Stock')
+        rows = self.cursor.fetchall()
+
+        y_offset -= 20
+        for row in rows:
+            x_offset = 40
+            for item in row:
+                c.drawString(x_offset, y_offset, str(item))
+                x_offset += col_width
+            y_offset -= 20
+            if y_offset < 50:  # Add new page if the space is not enough
+                c.showPage()
+                c.setFont("Helvetica", 10)
+                y_offset = height - 50
+
+        c.save()
+
 
 if __name__ == "__main__":
     root = ctk.CTk()
