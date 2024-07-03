@@ -56,12 +56,13 @@ class WorkerApp:
 
     def open_tasks_panel(self):
         root.withdraw()
-        subprocess.run(["python", "Task Status Update.py"])
+        subprocess.run(["python", "Task Status Update.py", username])
         root.deiconify()
         self.destroy_graph()
         self.create_graph()
         self.destroy_inventory_stats()
         self.create_inventory_stats()
+
 
     def open_inventory_panel(self):
         root.withdraw()
@@ -96,28 +97,33 @@ class WorkerApp:
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=20)
 
         self.button1 = ctk.CTkButton(left_frame, text="TASKS", fg_color='#FFFFFF',
-                                     text_color='#000000',
-                                     command=self.open_tasks_panel
-                                     )
+                                                    text_color='#000000',
+                                                       command=self.open_tasks_panel
+                                                    )
         self.button1.pack(pady=10)
 
-        self.button2 = ctk.CTkButton(left_frame, text="INVENTORY MANAGEMENT", fg_color='#FFFFFF',
-                                     text_color='#000000',
-                                     command=self.open_inventory_panel)
+        self.button2= ctk.CTkButton(left_frame, text="INVENTORY MANAGEMENT", fg_color='#FFFFFF',
+                                                       text_color='#000000',
+                                                       command=self.open_inventory_panel)
         self.button2.pack(pady=10)
 
         self.button3 = ctk.CTkButton(left_frame, text="PURCHASE ORDER", fg_color='#FFFFFF',
-                                     text_color='#000000',
-                                     command=self.open_purchase_order_panel)
+                                                   text_color='#000000',
+                                                       command=self.open_purchase_order_panel )
         self.button3.pack(pady=10)
 
         self.button4 = ctk.CTkButton(left_frame, text="SALES ORDER", fg_color='#FFFFFF',
                                      text_color='#000000',
-                                     command=self.open_sales_order_panel
+                                                       command=self.open_sales_order_panel
                                      )
         self.button4.pack(pady=10)
 
-        self.back_button = ctk.CTkButton(left_frame, text="LOG OUT", command=self.close_subpanel)
+        self.button5 = ctk.CTkButton(left_frame, text="VENDORS", fg_color='#FFFFFF',
+                                     text_color='#000000',
+                                                       command=self.open_vendor_details_panel)
+        self.button5.pack(pady=10)
+
+        self.back_button = ctk.CTkButton(left_frame, text="Back", command=self.close_subpanel)
         self.back_button.pack(side=tk.BOTTOM, pady=20)
 
         main_frame = ctk.CTkFrame(self.root, fg_color='white')
@@ -223,6 +229,7 @@ class WorkerApp:
                                              font=font)
             description_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
+
     def destroy_inventory_stats(self):
         for stat_frame in self.stat_frames:
             stat_frame.pack_forget()  # Remove the stat frame from the frame
@@ -240,7 +247,6 @@ class WorkerApp:
         self.notification_window.title('Notifications')
         self.notification_window.geometry('500x400')
         self.notification_window.resizable(0, 0)
-        self.notification_window.attributes('-topmost', 'true')
 
         notification_label = ctk.CTkLabel(self.notification_window, text="Notifications", font=("Helvetica", 14))
         notification_label.pack(pady=20)
