@@ -362,6 +362,11 @@ class AssignmentApp:
             if row:
                 username, performance_rating, task_id, task_name, deadline, task_description, status = row
 
+                # Validate performance rating
+                if not (0 <= performance_rating < 10):
+                    messagebox.showerror("Error", "Performance rating must be between 0 and 10.")
+                    return
+
                 # Format the date
                 date_str = datetime.now().strftime("%Y-%m-%d")
 
