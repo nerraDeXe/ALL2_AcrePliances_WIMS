@@ -19,7 +19,7 @@ class Database:
                 USER_REAL_ID INTEGER PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
-                role TEXT NOT NULL CHECK(role IN ('Administrator', 'Supervisor', 'Worker'))
+                roles TEXT NOT NULL CHECK(roles IN ('Administrator', 'Supervisor', 'Worker'))
             )
         ''')
 
@@ -104,6 +104,7 @@ class Database:
             CREATE TABLE IF NOT EXISTS workers (
                 worker_id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
+                performance_rating INTEGER,
                 FOREIGN KEY (username) REFERENCES users (username))
         ''')
 
