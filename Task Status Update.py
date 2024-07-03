@@ -7,6 +7,7 @@ import sqlite3
 import pytz
 from tkcalendar import DateEntry
 import subprocess
+import sys
 
 
 class WorkerApp:
@@ -93,7 +94,7 @@ class WorkerApp:
     def load_tasks(self):
         for i in self.task_tree.get_children():
             self.task_tree.delete(i)
-        self.cursor.execute("SELECT * FROM tasks")
+        self.cursor.execute("SELECT * FROM tasks WHERE assigned_to=?", (username,))
         rows = self.cursor.fetchall()
         for row in rows:
             self.task_tree.insert("", tk.END, values=row)
@@ -231,6 +232,7 @@ class WorkerApp:
 
 
 if __name__ == "__main__":
+    username = sys.argv[1] if len(sys.argv) > 1 else "Unknown"
     root = ctk.CTk()
     app = WorkerApp(root, "admin")
     root.mainloop()
