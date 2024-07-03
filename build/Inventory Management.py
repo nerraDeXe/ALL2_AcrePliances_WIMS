@@ -3,11 +3,12 @@ import tkinter as tk
 import customtkinter as ctk
 from tkinter import ttk, messagebox, Menu
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from PIL import Image, ImageTk
 import pytz
 from fpdf import FPDF
 from tkcalendar import DateEntry
+import pygame
 
 
 class InventoryApp:
@@ -62,16 +63,19 @@ class InventoryApp:
         left_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=20)
 
-        self.delete_inventory_button = ctk.CTkButton(left_frame, text="DELETE INVENTORY", fg_color='#FFFFFF', command=self.remove_inventory,
-                                                    text_color='#000000'
-                                                    )
+        self.delete_inventory_button = ctk.CTkButton(left_frame, text="DELETE INVENTORY", fg_color='#FFFFFF',
+                                                     command=self.remove_inventory,
+                                                     text_color='#000000'
+                                                     )
         self.delete_inventory_button.pack(pady=10)
 
-        self.edit_inventory_button = ctk.CTkButton(left_frame, text="EDIT SELECTED PRODUCT", fg_color='#FFFFFF', command=self.edit_product_details,
-                                                       text_color='#000000')
+        self.edit_inventory_button = ctk.CTkButton(left_frame, text="EDIT SELECTED PRODUCT", fg_color='#FFFFFF',
+                                                   command=self.edit_product_details,
+                                                   text_color='#000000')
         self.edit_inventory_button.pack(pady=10)
 
-        self.move_inventory_button = ctk.CTkButton(left_frame, text="MOVE PRODUCT LOCATION", fg_color='#FFFFFF', command=self.move_product_location,
+        self.move_inventory_button = ctk.CTkButton(left_frame, text="MOVE PRODUCT LOCATION", fg_color='#FFFFFF',
+                                                   command=self.move_product_location,
                                                    text_color='#000000')
         self.move_inventory_button.pack(pady=10)
 
@@ -197,7 +201,7 @@ class InventoryApp:
             self.inventory_tree.insert('', 'end', values=row)
 
     ############################CRUD####################################################################
-    
+
     def remove_inventory(self):
         if not self.inventory_tree.selection():
             messagebox.showerror('No record selected!', 'Please select a record to delete!')
@@ -207,15 +211,15 @@ class InventoryApp:
         values_selected = current_selected_inventory['values']
 
         surety = messagebox.askyesno('Are you sure?',
-                             f'Are you sure that you want to delete the record of {values_selected[0]}')
+                                     f'Are you sure that you want to delete the record of {values_selected[0]}')
 
         if surety:
             self.connector.execute('DELETE FROM Inventory WHERE PRODUCT_REAL_ID=?', (values_selected[0],))
             self.connector.commit()
 
             self.load_inventory_data()
-            messagebox.showinfo('Record deleted successfully!', f'The record of {values_selected[0]} was deleted successfully')
-            self.add_notification()
+            messagebox.showinfo('Record deleted successfully!',
+                                f'The record of {values_selected[0]} was deleted successfully')
 
     def edit_product_details(self):
         if not self.inventory_tree.selection():
@@ -231,10 +235,11 @@ class InventoryApp:
         self.edit_window.resizable(False, False)
 
         # Add a red heading
-        ctk.CTkLabel(self.edit_window, text="Edit Product", font=('Helvetica', 16, 'bold'), text_color='red').grid(row=0,
-                                                                                                               columnspan=2,
-                                                                                                               padx=10,
-                                                                                                               pady=5)
+        ctk.CTkLabel(self.edit_window, text="Edit Product", font=('Helvetica', 16, 'bold'), text_color='red').grid(
+            row=0,
+            columnspan=2,
+            padx=10,
+            pady=5)
 
         # Create and place labels and entries in the new window
         ctk.CTkLabel(self.edit_window, text="Product Name:").grid(row=1, column=0, padx=10, pady=5)
@@ -259,9 +264,9 @@ class InventoryApp:
 
         # Add buttons for Update and Cancel
         ctk.CTkButton(self.edit_window, text='Update Record', font=('Helvetica', 13, 'bold'), fg_color='SpringGreen4',
-                  command=self.update_record_direct).grid(row=7, column=0, padx=10, pady=10)
+                      command=self.update_record_direct).grid(row=7, column=0, padx=10, pady=10)
         ctk.CTkButton(self.edit_window, text='Cancel', font=('Helvetica', 13, 'bold'), fg_color='red',
-                  command=self.edit_window.destroy).grid(row=7, column=1, padx=10, pady=10)
+                      command=self.edit_window.destroy).grid(row=7, column=1, padx=10, pady=10)
 
     def move_product_location(self):
         if not self.inventory_tree.selection():
@@ -315,16 +320,14 @@ class InventoryApp:
         contents = current_selected_product['values']
 
         try:
-            # Get the amount to move and new location
             amount_to_move = int(self.AMOUNT_TO_MOVE.get())
             new_location = self.NEW_LOCATION.get()
 
-            if (
-                    not self.date.get() or not self.PRODUCT_NAME.get() or not self.STOCKS.get() or not self.CATEGORY.get() or
-                    not self.PURCHASE_PRICE.get() or not self.SELLING_PRICE.get() or not self.LOCATION.get() or not new_location or
-                    amount_to_move <= 0):
-                messagebox.showerror('Fields empty or invalid amount!',
-                                     "Please fill all missing fields and ensure the amount to move is greater than zero.")
+            if (not self.date.get() or not self.PRODUCT_NAME.get() or not self.STOCKS.get() or not self.CATEGORY.get()
+                    or not self.PURCHASE_PRICE.get() or not self.SELLING_PRICE.get() or not self.LOCATION.get()
+                    or not new_location or amount_to_move <= 0):
+                messagebox.showerror('Fields empty or invalid amount!', "Please fill all missing fields and ensure "
+                                                                        "the amount to move is greater than zero.")
                 return
 
             current_stock = int(self.STOCKS.get())
@@ -333,77 +336,65 @@ class InventoryApp:
                 messagebox.showerror('Invalid amount', "The amount to move exceeds the current stock.")
                 return
 
-            # Deduct stock from the original location
             new_stock = current_stock - amount_to_move
             if new_stock == 0:
-                # Delete the record if all stock is moved
-                self.connector.execute(
-                    'DELETE FROM Inventory WHERE PRODUCT_REAL_ID=?',
-                    (contents[0],)
-                )
+                self.connector.execute('DELETE FROM Inventory WHERE PRODUCT_REAL_ID=?', (contents[0],))
             else:
-                self.connector.execute(
-                    'UPDATE Inventory SET STOCKS=? WHERE PRODUCT_REAL_ID=?',
-                    (new_stock, contents[0])
-                )
+                self.connector.execute('UPDATE Inventory SET STOCKS=? WHERE PRODUCT_REAL_ID=?',
+                                       (new_stock, contents[0]))
 
-            # Check if the product already exists in the new location
-            existing_product = self.connector.execute(
-                'SELECT * FROM Inventory WHERE PRODUCT_NAME=? AND CATEGORY=? AND LOCATION=?',
-                (self.PRODUCT_NAME.get(), self.CATEGORY.get(), new_location)
-            ).fetchone()
+            existing_product = self.connector.execute('SELECT * FROM Inventory WHERE PRODUCT_NAME=? AND CATEGORY=? '
+                                                      'AND LOCATION=?',
+                                                      (self.PRODUCT_NAME.get(), self.CATEGORY.get(),
+                                                       new_location)).fetchone()
 
             if existing_product:
-                # Update the existing product's stock at the new location
                 new_stock_existing = int(existing_product[4]) + amount_to_move
-                self.connector.execute(
-                    'UPDATE Inventory SET STOCKS=? WHERE PRODUCT_REAL_ID=?',
-                    (new_stock_existing, existing_product[0])  # Use PRODUCT_REAL_ID to avoid confusion
-                )
+                self.connector.execute('UPDATE Inventory SET STOCKS=? WHERE PRODUCT_REAL_ID=?',
+                                       (new_stock_existing, existing_product[0]))
             else:
                 location_prefix = new_location[:3].upper()
                 new_internal_reference = f"WH-{location_prefix}-{self.PRODUCT_ID.get()}"
 
-                self.connector.execute(
-                    'INSERT INTO Inventory (date, PRODUCT_NAME, STOCKS, CATEGORY, PURCHASE_PRICE, SELLING_PRICE, '
-                    'LOCATION, INTERNAL_REFERENCE, PRODUCT_ID)'
-                    'VALUES (?, LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, ?, ?)', (
-                        self.date.get_date(), self.PRODUCT_NAME.get().strip(), amount_to_move, self.CATEGORY.get(),
-                        self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location, new_internal_reference,
-                        self.PRODUCT_ID.get())
-                )
+                self.connector.execute('INSERT INTO Inventory (date, PRODUCT_NAME, STOCKS, CATEGORY, PURCHASE_PRICE, '
+                                       'SELLING_PRICE, LOCATION, INTERNAL_REFERENCE, PRODUCT_ID) VALUES (?, '
+                                       'LTRIM(RTRIM(?)), ?, ?, ?, ?, ?, ?, ?)', (self.date.get_date(),
+                                                                                 self.PRODUCT_NAME.get().strip(),
+                                                                                 amount_to_move, self.CATEGORY.get(),
+                                                                                 self.PURCHASE_PRICE.get(),
+                                                                                 self.SELLING_PRICE.get(),
+                                                                                 new_location,
+                                                                                 new_internal_reference,
+                                                                                 self.PRODUCT_ID.get()))
 
             self.connector.commit()
 
-            messagebox.showinfo('Updated successfully',
-                                f'The record of {self.PRODUCT_NAME.get()} was updated successfully and {amount_to_move} items '
-                                f'were moved to {new_location}')
+            messagebox.showinfo('Updated successfully', f'The record of {self.PRODUCT_NAME.get()} was updated '
+                                                        f'successfully and {amount_to_move} items were moved to {
+                                                        new_location}')
+            self.add_notification(f'Product ID: {contents[3]} Quantity: {amount_to_move} move to in {new_location}')
 
-            # self.add_notification()
             self.load_inventory_data()
             self.move_window.destroy()
 
-            # Generate PDF report for the original and new record
-            self.generate_pdf_report(
-                self.PRODUCT_NAME.get(), contents[0], new_stock, self.CATEGORY.get(),
-                self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
-                self.date.get(), 'Edit'
-            )
+            self.generate_pdf_report(self.PRODUCT_NAME.get(), contents[0], new_stock, self.CATEGORY.get(),
+                                     self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
+                                     self.date.get(), 'Edit')
 
             if existing_product:
-                self.generate_pdf_report(
-                    self.PRODUCT_NAME.get(), existing_product[0], new_stock_existing,
-                    self.CATEGORY.get(),
-                    self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location,
-                    self.date.get(), 'Update'
-                )
+                self.generate_pdf_report(self.PRODUCT_NAME.get(), existing_product[0],
+                                         new_stock_existing, self.CATEGORY.get(), self.PURCHASE_PRICE.get(),
+                                         self.SELLING_PRICE.get(), new_location, self.date.get(), 'Update')
             else:
-                self.generate_pdf_report(
-                    self.PRODUCT_NAME.get(), contents[0], amount_to_move,
-                    self.CATEGORY.get(),
-                    self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), new_location,
-                    self.date.get(), 'Move'
-                )
+                self.generate_pdf_report(self.PRODUCT_NAME.get(), contents[0], amount_to_move,
+                                         self.CATEGORY.get(), self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(),
+                                         new_location, self.date.get(), 'Move')
+
+            self.cursor.execute("SELECT STOCKS FROM Inventory WHERE PRODUCT_REAL_ID=?", (contents[0],))
+            new_stock_level = self.cursor.fetchone()[0]
+
+            if new_location == 'Storage Area' and new_stock_level < 5:
+                self.add_notification(f'Product ID: {contents[3]} has low stock ({new_stock_level}) in Storage Area')
 
         except Exception as e:
             messagebox.showerror('Error', f"An error occurred: {e}")
@@ -428,20 +419,18 @@ class InventoryApp:
             self.connector.commit()
 
             messagebox.showinfo('Updated successfully',
-                        f'The record of {self.product_name_entry.get()} was updated successfully.')
+                                f'The record of {self.product_name_entry.get()} was updated successfully.')
 
             self.load_inventory_data()
             self.edit_window.destroy()
-            self.add_notification()
         except Exception as e:
             messagebox.showerror("Error", f"Inappropriate values. {str(e)}")
 
     def cancel_update(self):
         self.load_inventory_data()
 
-
     def add_notification(self, description):
-        timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
                             (description, timestamp))
         self.connector.commit()
@@ -450,10 +439,15 @@ class InventoryApp:
     def show_notifications_window(self):
         self.notification_window = ctk.CTkToplevel(self.root)
         self.notification_window.title('Notifications')
-        self.notification_window.geometry('500x400')
+        self.notification_window.geometry('550x400')
         self.notification_window.resizable(0, 0)
+        self.notification_window.attributes('-topmost', True)
 
-        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications", font=("Helvetica", 14))
+        # Set the background color to red
+        self.notification_window.configure(fg_color='#BF2C37')
+
+        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
+                                          font=("Helvetica", 14, 'bold'))
         notification_label.pack(pady=20)
 
         self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
@@ -462,7 +456,8 @@ class InventoryApp:
         self.load_notifications()
 
         delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification)
+                                      command=self.delete_selected_notification,
+                                      fg_color="black")
         delete_button.pack(pady=10)
 
     def delete_selected_notification(self):
@@ -492,7 +487,7 @@ class InventoryApp:
         try:
             self.NOTIFICATION_LIST.delete(0, tk.END)
             self.notification_ids = {}
-            self.cursor.execute("SELECT * FROM Notifications")
+            self.cursor.execute("SELECT * FROM Notifications ORDER BY TIMESTAMP DESC")
             notifications = self.cursor.fetchall()
 
             for idx, notification in enumerate(notifications):
