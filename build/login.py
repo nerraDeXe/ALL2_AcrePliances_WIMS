@@ -52,7 +52,7 @@ class Database:
                 SELLING_PRICE FLOAT,
                 LOCATION VARCHAR(30),
                 INTERNAL_REFERENCE VARCHAR(30))
-        ''')
+            ''')
 
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS Purchase_Orders (

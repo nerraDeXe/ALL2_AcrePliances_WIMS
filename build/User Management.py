@@ -37,15 +37,10 @@ class UserApp:
                                    text_color='white')
         title_label.pack(side=tk.LEFT, padx=20, pady=20)
 
-        welcome_label = ctk.CTkLabel(top_frame, text=f"Welcome, {self.username}", font=("Helvetica", 12),
-                                     text_color='white')
-        welcome_label.pack(side=tk.LEFT, padx=20, pady=20)
-
         self.notification_image = ImageTk.PhotoImage(Image.open("nored.png"))
         self.notification_button = tk.Button(top_frame, image=self.notification_image, bg='white',
                                              activebackground='darkred', command=self.show_notifications_window)
         self.notification_button.pack(side=tk.RIGHT, padx=20, pady=20)
-
         left_frame = ctk.CTkFrame(self.root, fg_color='#BF2C37')
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=20)
 
@@ -204,83 +199,9 @@ class UserApp:
         self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
                             (description, timestamp))
         self.connector.commit()
-        self.load_notifications()
 
     def show_notifications_window(self):
-        self.notification_window = ctk.CTkToplevel(self.root)
-        self.notification_window.title('Notifications')
-        self.notification_window.geometry('600x400')
-        self.notification_window.resizable(0, 0)
-        self.notification_window.attributes('-topmost', True)
-
-        # Set the background color to red
-        self.notification_window.configure(fg_color='#BF2C37')
-
-        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
-                                          font=("Helvetica", 14, 'bold'))
-        notification_label.pack(pady=20)
-
-        self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
-        self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        self.load_notifications()
-
-        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification,
-                                      fg_color="black")
-        delete_button.pack(pady=10)
-
-    def delete_selected_notification(self):
-        # Get selected indices from the notification list
-        selected_indices = self.NOTIFICATION_LIST.curselection()
-
-        # Loop through selected indices and delete the corresponding notifications
-        for index in selected_indices:
-            try:
-                # Fetch the notification ID using the index
-                notification_id = self.notification_ids[index]
-                # Execute the SQL delete command
-                self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
-                self.connector.commit()
-            except sqlite3.Error as e:
-                # Show error message if there is an issue with deletion
-                messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
-                return
-
-        # Check if any notification is selected
-        if not selected_indices:
-            messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
-            return
-
-        # Ask for confirmation before deleting the selected notification(s)
-        confirm_delete = messagebox.askyesno('Confirm Delete',
-                                             'Are you sure you want to delete the selected notification(s)?')
-        if not confirm_delete:
-            return
-
-        # Reload notifications after deletion
-        self.load_notifications()
-
-    def load_notifications(self):
-        try:
-            if hasattr(self, 'NOTIFICATION_LIST'):
-                self.NOTIFICATION_LIST.delete(0, tk.END)
-                self.notification_ids = {}
-                self.cursor.execute("SELECT * FROM Notifications ORDER BY TIMESTAMP DESC")
-                notifications = self.cursor.fetchall()
-
-                for idx, notification in enumerate(notifications):
-                    timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
-                    utc_timezone = pytz.utc
-                    local_timezone = pytz.timezone('Asia/Singapore')
-                    utc_timestamp = utc_timezone.localize(timestamp)
-                    local_timestamp = utc_timestamp.astimezone(local_timezone)
-                    formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                    message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
-                    self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
-                    self.notification_ids[idx] = notification[0]
-        except sqlite3.Error as e:
-            messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
+        subprocess.Popen(["python", "Notifications.py"])
 
 if __name__ == "__main__":
     root = tk.Tk()

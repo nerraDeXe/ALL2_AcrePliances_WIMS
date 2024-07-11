@@ -1,15 +1,23 @@
+import csv
 import datetime
 import tkinter as tk
+import platform
 import customtkinter as ctk
 from tkinter import ttk, messagebox, Menu
 import sqlite3
 from datetime import datetime, timezone
 from PIL import Image, ImageTk
-import pytz
-from fpdf import FPDF
 from tkcalendar import DateEntry
+import subprocess
 import pygame
-
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.utils import ImageReader
+from reportlab.lib import colors
+import os
 
 class InventoryApp:
     def __init__(self, root, username):
@@ -27,6 +35,7 @@ class InventoryApp:
 
         self.setup_variables()
         self.create_widgets()
+        self.is_filter_active = False
         self.detached_items = []
         self.load_inventory_data()
 
@@ -78,6 +87,21 @@ class InventoryApp:
                                                    command=self.move_product_location,
                                                    text_color='#000000')
         self.move_inventory_button.pack(pady=10)
+
+        self.generate_csv_button = ctk.CTkButton(left_frame, text="GENERATE CSV REPORT", fg_color='#FFFFFF',
+                                                 command=self.generate_csv_report,
+                                                 text_color='#000000')
+        self.generate_csv_button.pack(pady=10)
+
+        self.open_move_button = ctk.CTkButton(left_frame, text="OPEN MOVE PRODUCTS REPORTS", fg_color='#FFFFFF',
+                                                 command=self.open_move_folder,
+                                                 text_color='#000000')
+        self.open_move_button.pack(pady=10)
+
+        self.open_inventory_csv_button = ctk.CTkButton(left_frame, text="OPEN CSV REPORTS", fg_color='#FFFFFF',
+                                                 command=self.open_inventory_csv_folder,
+                                                 text_color='#000000')
+        self.open_inventory_csv_button.pack(pady=10)
 
         self.back_button = ctk.CTkButton(left_frame, text="Back", command=self.close_subpanel)
         self.back_button.pack(side=tk.BOTTOM, pady=20)
@@ -135,27 +159,33 @@ class InventoryApp:
                 self.inventory_tree.column(col, width=equal_width)
 
     def show_header_menu(self, event):
-        # Find the column heading that was clicked
-        region = self.inventory_tree.identify("region", event.x, event.y)
-        if (region == "heading"):
-            col = self.inventory_tree.identify_column(event.x)
-            self.selected_column = self.inventory_tree.heading(col)["text"]
-            self.update_header_menu(col)
+        if not self.is_filter_active:  # Check if filtering is active
+            # Find the column heading that was clicked
+            region = self.inventory_tree.identify("region", event.x, event.y)
+            if region == "heading":
+                col = self.inventory_tree.identify_column(event.x)
+                self.selected_column = self.inventory_tree.heading(col)["text"]
+                self.update_header_menu(col)
+                self.header_menu.post(event.x_root, event.y_root)
+        else:
+            # Only show the "Show All" option
+            self.header_menu.delete(0, tk.END)
+            self.header_menu.add_command(label="Show All", command=self.show_all)
             self.header_menu.post(event.x_root, event.y_root)
 
     def update_header_menu(self, col):
         # Clear previous menu items
         self.header_menu.delete(0, tk.END)
 
-        # Add submenu for unique items
-        unique_items_menu = Menu(self.header_menu, tearoff=0)
-        unique_items = self.get_unique_items(col)
+        if not self.is_filter_active:
+            # Add submenu for unique items
+            unique_items_menu = Menu(self.header_menu, tearoff=0)
+            unique_items = self.get_unique_items(col)
 
-        for item in unique_items:
-            unique_items_menu.add_command(label=item, command=lambda value=item: self.filter_by_column(value))
+            for item in unique_items:
+                unique_items_menu.add_command(label=item, command=lambda value=item: self.filter_by_column(value))
 
-        self.header_menu.add_cascade(label="Filter by", menu=unique_items_menu)
-        self.header_menu.add_command(label="Show All", command=self.show_all)
+            self.header_menu.add_cascade(label="Filter by", menu=unique_items_menu)
 
     def get_unique_items(self, col):
         # Get unique items in the specified column
@@ -179,10 +209,13 @@ class InventoryApp:
                 self.detached_items.append(item)
                 self.inventory_tree.detach(item)
 
+        self.is_filter_active = True  # Set filtering active
+
     def show_all(self):
         for item in self.detached_items:
             self.inventory_tree.reattach(item, '', 'end')
         self.detached_items = []  # Clear the detached items list
+        self.is_filter_active = False  # Set filtering inactive
 
     def on_resize(self, event):
         # Adjust column widths dynamically on window resize
@@ -194,11 +227,19 @@ class InventoryApp:
     def load_inventory_data(self):
         self.inventory_tree.delete(*self.inventory_tree.get_children())
 
+        # Define tag for rows with stock below 20
+        self.inventory_tree.tag_configure('low_stock', foreground='red')
+
         self.cursor.execute("SELECT * FROM Inventory")
         rows = self.cursor.fetchall()
 
         for row in rows:
-            self.inventory_tree.insert('', 'end', values=row)
+            stock = row[4]
+
+            # Determine tags based on stock quantity
+            tags = ['low_stock'] if stock < 20 else []
+
+            self.inventory_tree.insert('', 'end', values=row, tags=tags)
 
     ############################CRUD####################################################################
 
@@ -370,23 +411,14 @@ class InventoryApp:
             self.connector.commit()
 
             messagebox.showinfo('Updated successfully', f'The record of {self.PRODUCT_NAME.get()} was updated '
-                                                        f'successfully and {amount_to_move} items were moved to {
-                                                        new_location}')
+                                                        f'successfully and {amount_to_move} items were moved to {new_location}')
             self.add_notification(f'Product ID: {contents[3]} Quantity: {amount_to_move} move to in {new_location}')
 
             self.load_inventory_data()
+            self.is_filter_active = False
             self.move_window.destroy()
 
-            self.generate_pdf_report(self.PRODUCT_NAME.get(), contents[0], new_stock, self.CATEGORY.get(),
-                                     self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(), self.LOCATION.get(),
-                                     self.date.get(), 'Edit')
-
-            if existing_product:
-                self.generate_pdf_report(self.PRODUCT_NAME.get(), existing_product[0],
-                                         new_stock_existing, self.CATEGORY.get(), self.PURCHASE_PRICE.get(),
-                                         self.SELLING_PRICE.get(), new_location, self.date.get(), 'Update')
-            else:
-                self.generate_pdf_report(self.PRODUCT_NAME.get(), contents[0], amount_to_move,
+            self.generate_pdf_report(self.PRODUCT_NAME.get(), contents[3], amount_to_move,
                                          self.CATEGORY.get(), self.PURCHASE_PRICE.get(), self.SELLING_PRICE.get(),
                                          new_location, self.date.get(), 'Move')
 
@@ -407,12 +439,16 @@ class InventoryApp:
                 messagebox.showerror('Fields empty or invalid amount!', "Please fill all missing fields.")
                 return
 
+            if int(self.stocks_entry.get()) < 1:
+                messagebox.showerror('Error', "Stocks must be at least 1.")
+                return
+
             # Update the product record directly
             self.connector.execute(
                 'UPDATE Inventory SET PRODUCT_NAME=LTRIM(RTRIM(?)), STOCKS=?, PURCHASE_PRICE=?, '
                 'SELLING_PRICE=? WHERE PRODUCT_REAL_ID=?', (
                     self.product_name_entry.get(), int(self.stocks_entry.get()),
-                    self.purchase_price_entry.get(), self.selling_price_entry.get(),
+                    float(self.purchase_price_entry.get()), float(self.selling_price_entry.get()),
                     self.inventory_tree.item(self.inventory_tree.focus())['values'][0])
             )
 
@@ -422,9 +458,10 @@ class InventoryApp:
                                 f'The record of {self.product_name_entry.get()} was updated successfully.')
 
             self.load_inventory_data()
+            self.is_filter_active = False
             self.edit_window.destroy()
         except Exception as e:
-            messagebox.showerror("Error", f"Inappropriate values. {str(e)}")
+            messagebox.showerror("Error", f"Inappropriate values")
 
     def cancel_update(self):
         self.load_inventory_data()
@@ -434,101 +471,197 @@ class InventoryApp:
         self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
                             (description, timestamp))
         self.connector.commit()
-        self.load_notifications()
+        # self.load_notifications()
 
     def show_notifications_window(self):
-        self.notification_window = ctk.CTkToplevel(self.root)
-        self.notification_window.title('Notifications')
-        self.notification_window.geometry('550x400')
-        self.notification_window.resizable(0, 0)
-        self.notification_window.attributes('-topmost', True)
+        subprocess.Popen(["python", "Notifications.py"])
+        # self.notification_window = ctk.CTkToplevel(self.root)
+        # self.notification_window.title('Notifications')
+        # self.notification_window.geometry('550x400')
+        # self.notification_window.resizable(0, 0)
+        # self.notification_window.attributes('-topmost', True)
+        #
+        # # Set the background color to red
+        # self.notification_window.configure(fg_color='#BF2C37')
+        #
+        # notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
+        #                                   font=("Helvetica", 14, 'bold'))
+        # notification_label.pack(pady=20)
+        #
+        # self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
+        # self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        #
+        # self.load_notifications()
+        #
+        # delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
+        #                               command=self.delete_selected_notification,
+        #                               fg_color="black")
+        # delete_button.pack(pady=10)
 
-        # Set the background color to red
-        self.notification_window.configure(fg_color='#BF2C37')
+    # def delete_selected_notification(self):
+    #     selected_indices = self.NOTIFICATION_LIST.curselection()
+    #
+    #     if not selected_indices:
+    #         messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
+    #         return
+    #
+    #     confirm_delete = messagebox.askyesno('Confirm Delete',
+    #                                          'Are you sure you want to delete the selected notification(s)?')
+    #     if not confirm_delete:
+    #         return
+    #
+    #     for index in selected_indices:
+    #         try:
+    #             notification_id = self.notification_ids[index]
+    #             self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
+    #             self.connector.commit()
+    #         except sqlite3.Error as e:
+    #             messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
+    #             return
+    #
+    #     self.load_notifications()
+    #
+    # def load_notifications(self):
+    #     try:
+    #         self.NOTIFICATION_LIST.delete(0, tk.END)
+    #         self.notification_ids = {}
+    #         self.cursor.execute("SELECT * FROM Notifications ORDER BY TIMESTAMP DESC")
+    #         notifications = self.cursor.fetchall()
+    #
+    #         for idx, notification in enumerate(notifications):
+    #             timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
+    #             utc_timezone = pytz.utc
+    #             local_timezone = pytz.timezone('Asia/Singapore')
+    #             utc_timestamp = utc_timezone.localize(timestamp)
+    #             local_timestamp = utc_timestamp.astimezone(local_timezone)
+    #             formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    #             message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
+    #             self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
+    #             self.notification_ids[idx] = notification[0]
+    #     except sqlite3.Error as e:
+    #         messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
 
-        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
-                                          font=("Helvetica", 14, 'bold'))
-        notification_label.pack(pady=20)
-
-        self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
-        self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        self.load_notifications()
-
-        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification,
-                                      fg_color="black")
-        delete_button.pack(pady=10)
-
-    def delete_selected_notification(self):
-        selected_indices = self.NOTIFICATION_LIST.curselection()
-
-        if not selected_indices:
-            messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
-            return
-
-        confirm_delete = messagebox.askyesno('Confirm Delete',
-                                             'Are you sure you want to delete the selected notification(s)?')
-        if not confirm_delete:
-            return
-
-        for index in selected_indices:
-            try:
-                notification_id = self.notification_ids[index]
-                self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
-                self.connector.commit()
-            except sqlite3.Error as e:
-                messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
-                return
-
-        self.load_notifications()
-
-    def load_notifications(self):
+    def generate_csv_report(self):
         try:
-            self.NOTIFICATION_LIST.delete(0, tk.END)
-            self.notification_ids = {}
-            self.cursor.execute("SELECT * FROM Notifications ORDER BY TIMESTAMP DESC")
-            notifications = self.cursor.fetchall()
+            # Fetch all columns except PRODUCT_REAL_ID
+            self.cursor.execute("""
+                SELECT DATE, PRODUCT_NAME, PRODUCT_ID, STOCKS, CATEGORY, 
+                       PURCHASE_PRICE, SELLING_PRICE, LOCATION, INTERNAL_REFERENCE 
+                FROM Inventory
+            """)
+            rows = self.cursor.fetchall()
 
-            for idx, notification in enumerate(notifications):
-                timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
-                utc_timezone = pytz.utc
-                local_timezone = pytz.timezone('Asia/Singapore')
-                utc_timestamp = utc_timezone.localize(timestamp)
-                local_timestamp = utc_timestamp.astimezone(local_timezone)
-                formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
-                self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
-                self.notification_ids[idx] = notification[0]
-        except sqlite3.Error as e:
-            messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
+            # Define the CSV file path
+            if not os.path.exists('Inventory Reports'):
+                os.makedirs('Inventory Reports')
+
+            # Generate the timestamp
+            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            base_name = f'Inventory_Report_{timestamp}'
+            file_name = f"{base_name}.csv"
+
+            csv_file_path = os.path.join('Inventory Reports', file_name)
+
+            # Write data to CSV file
+            with open(csv_file_path, mode='w', newline='', encoding='utf-8') as csv_file:
+                csv_writer = csv.writer(csv_file)
+                headers = ["DATE", "PRODUCT_NAME", "PRODUCT_ID", "STOCKS", "CATEGORY",
+                           "PURCHASE_PRICE", "SELLING_PRICE", "LOCATION", "INTERNAL_REFERENCE"]
+                csv_writer.writerow(headers)
+                csv_writer.writerows(rows)
+
+            messagebox.showinfo('CSV Report Generated', f'CSV report has been generated successfully at {csv_file_path}')
+        except Exception as e:
+            messagebox.showerror('Error', f'An error occurred while generating the CSV report: {e}')
 
     def generate_pdf_report(self, product_name, product_id, stocks, category, purchase_price, selling_price, location,
                             date, action):
-        pdf = FPDF()
-        pdf.add_page()
+        if not os.path.exists('Move Product Reports'):
+            os.makedirs('Move Product Reports')
+
+        report_base_name = f"{action}_Product_{product_name}_Report.pdf"
+        report_name = os.path.join('Move Product Reports', report_base_name)
+
+        # Automatically rename file if it already exists
+        count = 1
+        while os.path.exists(report_name):
+            report_name = os.path.join('Move Product Reports', f"{action}_Product_{product_name}_Report_{count}.pdf")
+            count += 1
+
+        document = SimpleDocTemplate(report_name, pagesize=letter)
+        width, height = letter
+
+        elements = []
 
         # Title
-        pdf.set_font('Arial', 'B', 16)
-        pdf.cell(200, 10, f'{action} Product Report', ln=True, align='C')
+        title_style = ParagraphStyle(name='Title', fontSize=18, alignment=1, spaceAfter=14)
+        title = Paragraph(f"{action} Product Report", title_style)
+        elements.append(title)
+        elements.append(Spacer(1, 12))
 
-        # Product details
-        pdf.set_font('Arial', '', 12)
-        pdf.cell(200, 10, f'Date: {date}', ln=True)
-        pdf.cell(200, 10, f'Product Name: {product_name}', ln=True)
-        pdf.cell(200, 10, f'Product ID: {product_id}', ln=True)
-        pdf.cell(200, 10, f'Stocks: {stocks}', ln=True)
-        pdf.cell(200, 10, f'Category: {category}', ln=True)
-        pdf.cell(200, 10, f'Purchase Price: {purchase_price}', ln=True)
-        pdf.cell(200, 10, f'Selling Price: {selling_price}', ln=True)
-        pdf.cell(200, 10, f'Location: {location}', ln=True)
+        # Line separator
+        elements.append(Paragraph('<hr width="100%" color="black"/>', getSampleStyleSheet()["Normal"]))
+        elements.append(Spacer(1, 12))
 
-        # Save the PDF with a dynamic name
-        pdf_name = f'{action}_Product_{product_id}.pdf'
-        pdf.output(pdf_name)
+        # Table Data
+        data = [
+            ["Product Name", f"{product_name}"],
+            ["Product ID", f"{product_id}"],
+            ["Stocks", f"{stocks}"],
+            ["Category", f"{category}"],
+            ["Purchase Price", f"RM{purchase_price:.2f}"],
+            ["Selling Price", f"RM{selling_price:.2f}"],
+            ["Location", f"{location}"],
+            ["Date", f"{date}"],
+        ]
 
-        messagebox.showinfo('PDF Report', f'{action} report generated: {pdf_name}')
+        table = Table(data, colWidths=[2 * inch, 4 * inch])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 24))
 
+        # Line separator
+        elements.append(Paragraph('<hr width="100%" color="black"/>', getSampleStyleSheet()["Normal"]))
+        elements.append(Spacer(1, 12))
+
+        document.build(elements)
+        messagebox.showinfo('PDF Report', f'{action} report generated: {report_name}')
+
+    def open_move_folder(self):
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Define the path to the "Purchase Order" folder
+        move_path = os.path.join(script_dir, 'Move Product Reports')
+
+        # Check the operating system and open the folder accordingly
+        if platform.system() == 'Windows':
+            os.startfile(move_path)
+        elif platform.system() == 'Darwin':  # macOS
+            subprocess.Popen(['open', move_path])
+        else:  # Linux
+            subprocess.Popen(['xdg-open', move_path])
+
+    def open_inventory_csv_folder(self):
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Define the path to the "Purchase Order" folder
+        inv_csv_path = os.path.join(script_dir, 'Inventory Reports')
+
+        # Check the operating system and open the folder accordingly
+        if platform.system() == 'Windows':
+            os.startfile(inv_csv_path)
+        elif platform.system() == 'Darwin':  # macOS
+            subprocess.Popen(['open', inv_csv_path])
+        else:  # Linux
+            subprocess.Popen(['xdg-open', inv_csv_path])
 
 if __name__ == "__main__":
     root = ctk.CTk()

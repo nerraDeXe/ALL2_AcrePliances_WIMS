@@ -144,17 +144,17 @@ class AdminApp:
                                      command=self.open_vendor_details_panel)
         self.button5.pack(pady=10)
 
-        self.button6 = ctk.CTkButton(left_frame, text="TASK ASSIGNMENT", fg_color='#FFFFFF',
-                                     text_color='#000000',
-                                     command=self.open_tasks_assignment_panel
-                                     )
-        self.button6.pack(pady=10)
-
-        self.button7 = ctk.CTkButton(left_frame, text="TASKS", fg_color='#FFFFFF',
-                                     text_color='#000000',
-                                     command=self.open_tasks_panel
-                                     )
-        self.button7.pack(pady=10)
+        # self.button6 = ctk.CTkButton(left_frame, text="TASK ASSIGNMENT", fg_color='#FFFFFF',
+        #                              text_color='#000000',
+        #                              command=self.open_tasks_assignment_panel
+        #                              )
+        # self.button6.pack(pady=10)
+        #
+        # self.button7 = ctk.CTkButton(left_frame, text="TASKS", fg_color='#FFFFFF',
+        #                              text_color='#000000',
+        #                              command=self.open_tasks_panel
+        #                              )
+        # self.button7.pack(pady=10)
 
         self.back_button = ctk.CTkButton(left_frame, text="LOG OUT", command=self.close_subpanel)
         self.back_button.pack(side=tk.BOTTOM, pady=20)
@@ -175,15 +175,15 @@ class AdminApp:
         self.create_inventory_stats()
 
     def close_subpanel(self):
-        root.quit()
         root.destroy()
-        subprocess.Popen(["python", "login.py"])
+        root.quit()
+        subprocess.run(["python", "login.py"])
 
     def create_graph(self):
         # Create a graph in the left frame
         conn = sqlite3.connect('AcrePliances.db')
         cursor = conn.cursor()
-        cursor.execute('SELECT PRODUCT_NAME, SUM(STOCKS) FROM Inventory GROUP BY PRODUCT_NAME')
+        cursor.execute('SELECT PRODUCT_ID, SUM(STOCKS) FROM Inventory GROUP BY PRODUCT_NAME')
         data = cursor.fetchall()
         conn.close()
 
@@ -226,8 +226,7 @@ class AdminApp:
         cursor.execute('SELECT SUM(STOCKS) FROM Inventory WHERE LOCATION="Storage Area"')
         product_sto = cursor.fetchone()[0]
 
-        cursor.execute('SELECT COUNT(*) FROM tasks')
-        total_tasks = cursor.fetchone()[0]
+
 
         conn.close()
 
@@ -237,11 +236,10 @@ class AdminApp:
             'Pending Sales Orders': total_sales_orders,
             'Remaining Product in Staging Area': product_sta,
             'Remaining Product in Storage Area': product_sto,
-            'Remaining Tasks': total_tasks
         }
 
-        industrial_colors = ['orange', 'light blue', 'light blue', 'light blue', 'light blue', 'light blue']
-        white = ['white', 'white', 'white', 'white', 'white', 'white']
+        industrial_colors = ['orange', 'light blue', 'light blue', 'light blue', 'light blue']
+        white = ['white', 'white', 'white', 'white', 'white']
         font = ('Arial', 18, 'bold')
         number_font = ('Arial', 30, 'bold')  # Increased font size for the numbers
 
@@ -272,7 +270,6 @@ class AdminApp:
         self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
                             (description, timestamp))
         self.connector.commit()
-        self.load_notifications()
     #     self.play_notification_sound()
     #
     # def play_notification_sound(self):
@@ -297,72 +294,7 @@ class AdminApp:
     #             print(f"Alternative method failed: {e}")
 
     def show_notifications_window(self):
-        self.notification_window = ctk.CTkToplevel(self.root)
-        self.notification_window.title('Notifications')
-        self.notification_window.geometry('600x400')
-        self.notification_window.resizable(0, 0)
-        self.notification_window.attributes('-topmost', True)
-
-        # Set the background color to red
-        self.notification_window.configure(fg_color='#BF2C37')
-
-        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
-                                          font=("Helvetica", 14, 'bold'))
-        notification_label.pack(pady=20)
-
-        self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
-        self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        self.load_notifications()
-
-        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification,
-                                      fg_color="black")
-        delete_button.pack(pady=10)
-
-    def delete_selected_notification(self):
-        selected_indices = self.NOTIFICATION_LIST.curselection()
-
-        if not selected_indices:
-            messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
-            return
-
-        confirm_delete = messagebox.askyesno('Confirm Delete',
-                                             'Are you sure you want to delete the selected notification(s)?')
-        if not confirm_delete:
-            return
-
-        for index in selected_indices:
-            try:
-                notification_id = self.notification_ids[index]
-                self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
-                self.connector.commit()
-            except sqlite3.Error as e:
-                messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
-                return
-
-        self.load_notifications()
-
-    def load_notifications(self):
-        try:
-            if hasattr(self, 'NOTIFICATION_LIST'):
-                self.NOTIFICATION_LIST.delete(0, tk.END)
-                self.notification_ids = {}
-                self.cursor.execute("SELECT * FROM Notifications ORDER BY TIMESTAMP DESC")
-                notifications = self.cursor.fetchall()
-
-                for idx, notification in enumerate(notifications):
-                    timestamp = datetime.strptime(notification[2], '%Y-%m-%d %H:%M:%S')
-                    utc_timezone = pytz.utc
-                    local_timezone = pytz.timezone('Asia/Singapore')
-                    utc_timestamp = utc_timezone.localize(timestamp)
-                    local_timestamp = utc_timestamp.astimezone(local_timezone)
-                    formatted_timestamp = local_timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                    message_with_timestamp = f"{formatted_timestamp} - {notification[1]}"
-                    self.NOTIFICATION_LIST.insert(tk.END, message_with_timestamp)
-                    self.notification_ids[idx] = notification[0]
-        except sqlite3.Error as e:
-            messagebox.showerror('Error', f'Error loading notifications: {str(e)}')
+        subprocess.Popen(["python", "Notifications.py"])
 
     def check_low_stock(self):
         try:

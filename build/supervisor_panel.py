@@ -146,13 +146,13 @@ class SupervisorApp:
     def close_subpanel(self):
         root.quit()
         root.destroy()
-        subprocess.Popen(["python", "login.py"])
+        subprocess.run(["python", "login.py"])
 
     def create_graph(self):
         # Create a graph in the left frame
         conn = sqlite3.connect('AcrePliances.db')
         cursor = conn.cursor()
-        cursor.execute('SELECT PRODUCT_NAME, SUM(STOCKS) FROM Inventory GROUP BY PRODUCT_NAME')
+        cursor.execute('SELECT PRODUCT_ID, SUM(STOCKS) FROM Inventory GROUP BY PRODUCT_NAME')
         data = cursor.fetchall()
         conn.close()
 
@@ -206,7 +206,7 @@ class SupervisorApp:
             'Pending Sales Orders': total_sales_orders,
             'Remaining Product in Staging Area': product_sta,
             'Remaining Product in Storage Area': product_sto,
-            'Remaining Tasks': total_tasks
+            'Total Tasks Assigned': total_tasks
         }
 
         industrial_colors = ['orange', 'light blue', 'light blue', 'light blue', 'light blue', 'light blue']
@@ -241,7 +241,6 @@ class SupervisorApp:
         self.cursor.execute('INSERT INTO Notifications (DESCRIPTION, TIMESTAMP) VALUES (?, ?)',
                             (description, timestamp))
         self.connector.commit()
-        self.load_notifications()
     #     self.play_notification_sound()
     #
     # def play_notification_sound(self):
@@ -266,51 +265,7 @@ class SupervisorApp:
     #             print(f"Alternative method failed: {e}")
 
     def show_notifications_window(self):
-        self.notification_window = ctk.CTkToplevel(self.root)
-        self.notification_window.title('Notifications')
-        self.notification_window.geometry('600x400')
-        self.notification_window.resizable(0, 0)
-        self.notification_window.attributes('-topmost', True)
-
-        # Set the background color to red
-        self.notification_window.configure(fg_color='#BF2C37')
-
-        notification_label = ctk.CTkLabel(self.notification_window, text="Notifications",
-                                          font=("Helvetica", 14, 'bold'))
-        notification_label.pack(pady=20)
-
-        self.NOTIFICATION_LIST = tk.Listbox(self.notification_window)
-        self.NOTIFICATION_LIST.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        self.load_notifications()
-
-        delete_button = ctk.CTkButton(self.notification_window, text="Delete Selected",
-                                      command=self.delete_selected_notification,
-                                      fg_color="black")
-        delete_button.pack(pady=10)
-
-    def delete_selected_notification(self):
-        selected_indices = self.NOTIFICATION_LIST.curselection()
-
-        if not selected_indices:
-            messagebox.showwarning('No notification selected!', 'Please select a notification to delete.')
-            return
-
-        confirm_delete = messagebox.askyesno('Confirm Delete',
-                                             'Are you sure you want to delete the selected notification(s)?')
-        if not confirm_delete:
-            return
-
-        for index in selected_indices:
-            try:
-                notification_id = self.notification_ids[index]
-                self.cursor.execute('DELETE FROM Notifications WHERE NOTIFICATION_ID=?', (notification_id,))
-                self.connector.commit()
-            except sqlite3.Error as e:
-                messagebox.showerror('Error', f'Error deleting notification: {str(e)}')
-                return
-
-        self.load_notifications()
+        subprocess.Popen(["python", "Notifications.py"])
 
     def load_notifications(self):
         try:
